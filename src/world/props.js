@@ -33,12 +33,12 @@ function mats() {
 // Foliage: leaf-clump cards scattered through an ellipsoid crown, each drawn from both sides with a soft outward normal.
 function foliage() {
   const r = makeRng(31), pos = [], nor = [], uv = [], col = [], C = new THREE.Vector3(0, 6.3, 0), p = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), n = new THREE.Vector3();
-  for (let i = 0; i < 44; i++) {
+  for (let i = 0; i < 100; i++) {
     const th = r() * 6.283, ph = Math.acos(r.range(-0.75, 1)), rad = 0.5 + 0.5 * Math.pow(r(), 0.5);
     p.set(Math.sin(ph) * Math.cos(th) * 3.1 * rad, Math.cos(ph) * 2.3 * rad, Math.sin(ph) * Math.sin(th) * 3.1 * rad).add(C);
     n.copy(p).sub(C).add(new THREE.Vector3(0, 1.4, 0)).normalize();
     a.set(r() - 0.5, r() - 0.5, r() - 0.5).cross(n).normalize(); b.crossVectors(n, a).normalize(); a.applyAxisAngle(b, r.range(-0.6, 0.6));
-    const sz = r.range(1.5, 2.3), k = r.range(0.7, 1.15) * (0.75 + 0.25 * (p.y - 4) / 4.6);
+    const sz = r.range(0.85, 1.45), k = r.range(0.5, 1.0) * (0.6 + 0.4 * (p.y - 4) / 4.6);
     const q = [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]].map(([u, v, s, t]) => [p.x + (a.x * u + b.x * v) * sz, p.y + (a.y * u + b.y * v) * sz, p.z + (a.z * u + b.z * v) * sz, s, t]);
     for (const order of [[0, 1, 2, 0, 2, 3], [0, 2, 1, 0, 3, 2]]) for (const t of order) { pos.push(q[t][0], q[t][1], q[t][2]); uv.push(q[t][3], q[t][4]); nor.push(n.x, n.y, n.z); col.push(k, k, k); }
   }

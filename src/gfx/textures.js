@@ -38,35 +38,52 @@ function pixels(size, fn) {
 
 // ---------------------------------------------------------------- tank textures
 const camoCache = new Map();
+// Paint for one vehicle, kept clean and crisp the way factory paint photographs: the scheme itself, then only a faint
+// tonal drift across the plates. Road dirt is added in the shader, low on the hull, not baked in here.
 export function camoTexture(camo) {
   const key = camo.type + camo.colors.join();
   if (camoCache.has(key)) return camoCache.get(key);
-  const cols = camo.colors.map(hex), n1 = makeNoise(11), n2 = makeNoise(29), n3 = makeNoise(53), size = 512, r = makeRng(7);
-  let seeds = null;
-  if (camo.type === 'splinter') seeds = Array.from({ length: 22 }, (_, i) => [r(), r(), i % 4]);
-  const [c] = pixels(size, (u, v, x, y) => {
-    let k;
-    if (camo.type === 'digital') {
-      const q = 1 / 48, cu = Math.floor(u / q) * q, cv = Math.floor(v / q) * q, jit = (((Math.floor(u / q) * 73856093) ^ (Math.floor(v / q) * 19349663)) >>> 0) % 100 / 100;
-      const a = n1(cu, cv, 3, 3) + (jit - 0.5) * 0.16, b = n2(cu, cv, 4, 2) + (jit - 0.5) * 0.1;
-      k = a > 0.6 ? cols[1] : b > 0.6 ? cols[2] : a < 0.36 ? cols[3] : cols[0];
-    } else if (camo.type === 'nato3' || camo.type === 'blotch') {
-      const a = n1(u, v, 3, 3), b = n2(u, v, 3, 3);
-      k = b > 0.63 ? cols[2] : a > 0.55 ? cols[1] : cols[0];
-      if (camo.type === 'blotch' && a < 0.3) k = cols[3];
-    } else if (camo.type === 'splinter') {
-      let best = 9, bi = 0;
-      for (const s of seeds) { let dx = Math.abs(u - s[0]), dy = Math.abs(v - s[1]); dx = Math.min(dx, 1 - dx); dy = Math.min(dy, 1 - dy); const d = dx + dy * 1.3; if (d < best) { best = d; bi = s[2]; } }
-      k = cols[bi];
-    } else {
-      const a = n1(u, v, 3, 4);
-      k = a > 0.6 ? cols[2] : a < 0.38 ? cols[1] : cols[0];
+  const cols = camo.colors.map(hex), css = camo.colors, size = camo.type === 'digital' ? 1024 : 512, [c, g] = canvas(size, size), r = makeRng(7);
+  g.fillStyle = css[0]; g.fillRect(0, 0, size, size);
+  if (camo.type === 'digital') {
+    // PLA digital scheme: stepped masses built from overlapping rectangles on a 6 cm grid, with a scatter of black pixels
+    const N = 64, grid = new Uint8Array(N * N), put = (x, y, w, h, k) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) grid[(((y + j) % N) + N) % N * N + (((x + i) % N) + N) % N] = k; };
+    for (const [k, seeds, lo, hi] of [[1, 15, 7, 13], [2, 12, 6, 12]]) for (let sN = 0; sN < seeds; sN++) {
+      const sx = r.int(0, N - 1), sy = r.int(0, N - 1), parts = r.int(lo, hi);
+      for (let q = 0; q < parts; q++) put(sx + r.int(-5, 5), sy + r.int(-4, 4), r.int(1, 6), r.int(1, 4), k);
     }
-    // weathering: dust, grime, chipped speckles
-    const dust = n3(u, v, 8, 4), fine = n2(u, v, 32, 2), m = 0.82 + dust * 0.3 + (fine - 0.5) * 0.12, chip = fine > 0.86 ? 0.75 : 1;
-    return [k[0] * m * chip + dust * 14, k[1] * m * chip + dust * 12, k[2] * m * chip + dust * 8];
-  });
-  const t = tex(c); camoCache.set(key, t); return t;
+    for (let q = 0; q < 70; q++) { const x = r.int(0, N - 1), y = r.int(0, N - 1); if (grid[y * N + x] !== grid[y * N + ((x + 1) % N)]) put(x, y, r.int(1, 2), 1, 3); }
+    const u = size / N; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const k = grid[y * N + x]; if (k) { g.fillStyle = css[k]; g.fillRect(x * u, y * u, u, u); } }
+  } else if (camo.type === 'nato3') {
+    const n1 = makeNoise(11), n2 = makeNoise(29), [pc] = pixels(size, (u, v) => { const a = n1(u, v, 2, 3), b = n2(u + 0.3, v, 2, 3); return b > 0.61 ? cols[2] : a > 0.56 ? cols[1] : cols[0]; });
+    g.drawImage(pc, 0, 0);
+  }
+  const n3 = makeNoise(53), [wc] = pixels(128, (u, v) => { const k = 255 * (0.9 + (n3(u, v, 4, 4) - 0.5) * 0.24); return [k, k, k * 0.985]; });
+  g.globalCompositeOperation = 'multiply'; g.imageSmoothingEnabled = true; g.drawImage(wc, 0, 0, size, size); g.globalCompositeOperation = 'source-over';
+  const t = tex(c, { aniso: 16 }); camoCache.set(key, t); return t;
+}
+
+// National insignia painted on a transparent ground. kind: 'star81' (PLA) or 'ribbon' (St George ribbon with star).
+const _ins = new Map();
+export function insigniaTexture(kind) {
+  if (_ins.has(kind)) return _ins.get(kind);
+  const wide = kind === 'ribbon', [c, g] = canvas(wide ? 512 : 256, wide ? 128 : 256);
+  const star = (cx, cy, R, fill, stroke, lw) => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? R * 0.4 : R; g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.lineJoin = 'miter'; g.stroke(); } };
+  if (kind === 'star81') { star(128, 136, 104, '#c81e1e', '#f0c23a', 9); g.fillStyle = '#f0c23a'; g.font = `bold 44px ${CJK}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('八一', 128, 142); }
+  else { g.fillStyle = '#d9822b'; g.fillRect(0, 8, 512, 112); g.fillStyle = '#17171a'; for (const y of [8, 54, 100]) g.fillRect(0, y, 512, 20); star(256, 64, 56, '#c81e1e', '#f2efe6', 6); }
+  const t = tex(c, { clamp: true }); _ins.set(kind, t); return t;
+}
+
+// Stencilled turret number, worn at the edges. Transparent everywhere else.
+const _marks = new Map();
+export function markTexture(text, color = '#e9e6da') {
+  const key = text + color; if (_marks.has(key)) return _marks.get(key);
+  const [c, g] = canvas(256, 128), r = makeRng(text.length * 31 + text.charCodeAt(0));
+  g.fillStyle = color; g.font = "bold 112px 'Saira Condensed','Arial Narrow','DIN Condensed',Impact,sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 68, 240);
+  g.globalCompositeOperation = 'destination-out';
+  for (let x = 28; x < 256; x += 46) g.fillRect(x, 0, 3, 128);                                   // stencil bridges
+  for (let i = 0; i < 260; i++) { g.globalAlpha = r.range(0.3, 1); g.fillRect(r() * 256, r() * 128, r.range(1, 5), r.range(1, 3)); }
+  const t = tex(c, { clamp: true }); _marks.set(key, t); return t;
 }
 
 let _track;
@@ -131,6 +148,7 @@ export const FACADE_COUNT = FACADES.length;
 export function facadeTextures(i) {
   const f = FACADES[i], S = 512, r = makeRng(100 + i), [c, g] = canvas(S, S), [c2, g2] = canvas(S, S), [c3, g3] = canvas(S, S);
   const [c4, g4] = canvas(S, S); g4.fillStyle = 'rgb(205,205,205)'; g4.fillRect(0, 0, S, S);
+  const gm = (f.glass[0] + f.glass[1] + f.glass[2]) / 3, glass = f.glass.map((v) => v * 0.58 + gm * 0.24);
   const bw = S / f.bays, fh = S / f.floors, rgb = (k, m = 1) => `rgb(${k[0] * m | 0},${k[1] * m | 0},${k[2] * m | 0})`;
   g.fillStyle = rgb(f.mull); g.fillRect(0, 0, S, S);
   g2.fillStyle = 'rgb(0,170,20)'; g2.fillRect(0, 0, S, S); // frame: rough, slightly metallic
@@ -141,12 +159,17 @@ export function facadeTextures(i) {
     g.fillStyle = rgb(f.band, r.range(0.92, 1.06)); g.fillRect(x + (f.punch ? 0 : mw / 2), y, bw - (f.punch ? 0 : mw), bh);
     // glass pane with a vertical sky gradient and per-pane variation
     const m = r.range(0.8, 1.15), gx = x + mw / 2, gw = bw - mw, gy = y + bh, gh = fh - bh - (f.punch ? fh * 0.1 : 1.5);
-    const gr = g.createLinearGradient(0, gy, 0, gy + gh); gr.addColorStop(0, rgb(f.glass, m * 1.18)); gr.addColorStop(1, rgb(f.glass, m * 0.8));
+    const gr = g.createLinearGradient(0, gy, 0, gy + gh); gr.addColorStop(0, rgb(glass, m * 1.18)); gr.addColorStop(1, rgb(glass, m * 0.8));
     g.fillStyle = gr; g.fillRect(gx, gy, gw, gh);
     g2.fillStyle = `rgb(0,${r.int(22, 46)},${f.name === 'stone' ? 150 : 235})`; g2.fillRect(gx, gy, gw, gh); // glass: smooth + metallic → mirrors the sky
     // no two panes of a curtain wall are quite coplanar: give each a slight tilt so reflections break up pane by pane
     { const tl = r.range(-13, 13), hz = r.chance(0.5), gr4 = hz ? g4.createLinearGradient(gx, 0, gx + gw, 0) : g4.createLinearGradient(0, gy, 0, gy + gh); gr4.addColorStop(0, `rgb(${96 + tl},${96 + tl},${96 + tl})`); gr4.addColorStop(1, `rgb(${96 - tl},${96 - tl},${96 - tl})`); g4.fillStyle = gr4; g4.fillRect(gx, gy, gw, gh); g4.fillStyle = 'rgb(160,160,160)'; g4.fillRect(x + (f.punch ? 0 : mw / 2), y, bw - (f.punch ? 0 : mw), bh); }
-    if (r.chance(0.07)) { g3.fillStyle = r.chance(0.7) ? 'rgb(255,214,150)' : 'rgb(210,230,255)'; g3.globalAlpha = r.range(0.35, 0.9); g3.fillRect(gx + 1, gy + 1, gw - 2, gh - 2); g3.globalAlpha = 1; }
+    if (r.chance(0.13)) { // a lit office: ceiling glow fading toward the floor, light strips, sometimes half-drawn blinds
+      const warm = r.chance(0.65), k = r.range(0.3, 1.0), lg = g3.createLinearGradient(0, gy, 0, gy + gh); lg.addColorStop(0, warm ? `rgba(255,205,140,${k})` : `rgba(205,225,255,${k})`); lg.addColorStop(1, warm ? `rgba(150,95,45,${k * 0.5})` : `rgba(90,110,140,${k * 0.5})`);
+      g3.fillStyle = lg; g3.fillRect(gx + 1, gy + 1, gw - 2, gh - 2);
+      g3.fillStyle = `rgba(255,250,235,${k})`; for (let q = 0; q < 2; q++) g3.fillRect(gx + gw * (0.18 + q * 0.4), gy + gh * 0.07, gw * 0.24, Math.max(1, gh * 0.025));
+      g3.fillStyle = 'rgba(0,0,0,0.55)'; if (r.chance(0.4)) g3.fillRect(gx + 1, gy + 1, gw - 2, gh * r.range(0.2, 0.6)); if (r.chance(0.5)) g3.fillRect(gx + gw * r.range(0.2, 0.7), gy + gh * 0.55, gw * 0.14, gh * 0.45);
+    }
     if (r.chance(0.12)) { g.fillStyle = 'rgba(230,230,220,.16)'; g.fillRect(gx, gy, gw, gh * r.range(0.2, 0.7)); } // blinds
   }
   return { map: tex(c), rm: tex(c2, { linear: true }), em: tex(c3), nm: normalFromHeight(c4, 11) };
@@ -246,7 +269,7 @@ let _armor;
 export function armorDetail() {
   if (_armor) return _armor;
   const n1 = makeNoise(201), n2 = makeNoise(207), n3 = makeNoise(211);
-  const hc = grey(256, (u, v) => 0.5 + (n1(u, v, 64, 2) - 0.5) * 0.5 + (n2(u, v, 6, 3) - 0.5) * 0.35);
+  const hc = grey(256, (u, v) => 0.5 + (n1(u, v, 96, 1) - 0.5) * 0.5 + (n2(u, v, 8, 3) - 0.5) * 0.04);
   const rc = pixels(256, (u, v) => { const a = n3(u, v, 5, 4), b = n1(u, v, 48, 2), r = 150 + a * 70 + (b - 0.5) * 40; return [0, r, 0]; })[0];
   return (_armor = { normal: normalFromHeight(hc, 1.6), rough: tex(rc, { linear: true }) });
 }

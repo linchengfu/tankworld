@@ -4,10 +4,13 @@ import * as THREE from 'three';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _n = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1);
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
-const col3 = (c) => (c === undefined ? [1, 1, 1] : typeof c === 'number' ? [c, c, c] : c);
+// A colour argument is a grey scalar, [r, g, b], or { c, m } where m is the surface class the tank shader reads:
+// 0 camouflage paint, 1 rubber, 2 bare steel, 3 glass, 4 plain (its own colour, no camouflage).
+const col3 = (c) => (c === undefined ? [1, 1, 1, 0] : typeof c === 'number' ? [c, c, c, 0] : Array.isArray(c) ? [c[0], c[1], c[2], c[3] || 0] : [...col3(c.c).slice(0, 3), c.m || 0]);
+export const surf = (c, m) => ({ c, m });
 
 export class GeoBuilder {
-  constructor() { this.pos = []; this.nor = []; this.col = []; }
+  constructor() { this.pos = []; this.nor = []; this.col = []; this.srf = []; }
   // Append any BufferGeometry, transformed by `matrix`, tinted by `c` (grey scalar or [r,g,b]).
   addGeometry(geo, matrix, c) {
     const g = geo.index ? geo.toNonIndexed() : geo;
@@ -16,7 +19,7 @@ export class GeoBuilder {
     for (let i = 0; i < p.count; i++) {
       _v.fromBufferAttribute(p, i).applyMatrix4(matrix); this.pos.push(_v.x, _v.y, _v.z);
       _n.fromBufferAttribute(n, i).applyMatrix3(nm).normalize(); this.nor.push(_n.x, _n.y, _n.z);
-      this.col.push(k[0], k[1], k[2]);
+      this.col.push(k[0], k[1], k[2]); this.srf.push(k[3]);
     }
     if (g !== geo) g.dispose();
     return this;
@@ -32,7 +35,30 @@ export class GeoBuilder {
   sphere(r, x, y, z, o = {}) { const g = new THREE.SphereGeometry(r, o.seg || 12, o.rings || 8); this.addGeometry(g, this.xf(x, y, z, o), o.c); g.dispose(); return this; }
   tri(a, b, c, k) {
     _n.subVectors(b, a).cross(_v.subVectors(c, a)).normalize();
-    for (const p of [a, b, c]) { this.pos.push(p.x, p.y, p.z); this.nor.push(_n.x, _n.y, _n.z); this.col.push(k[0], k[1], k[2]); }
+    for (const p of [a, b, c]) { this.pos.push(p.x, p.y, p.z); this.nor.push(_n.x, _n.y, _n.z); this.col.push(k[0], k[1], k[2]); this.srf.push(k[3] || 0); }
+  }
+  // Triangle wound so that its normal points along `out`.
+  triOut(a, b, c, k, out) { _n.subVectors(b, a).cross(_v.subVectors(c, a)); if (_n.dot(out) < 0) this.tri(a, c, b, k); else this.tri(a, b, c, k); }
+  // A 2-D outline swept along the third axis, with triangulated (possibly concave) end caps.
+  //   axis 'y': pts are [x, z] and the slab spans y = a0..a1.   axis 'x': pts are [z, y], spanning x = a0..a1.   axis 'z': pts are [x, y].
+  // A point may carry its own span as [u, v, a0, a1], which is how sloping roofs and undercut floors are made.
+  slab(pts, a0, a1, axis, c, o = {}) {
+    const k = col3(c), ks = col3(o.side ?? c), n = pts.length;
+    const P = axis === 'y' ? (u, v, w) => new THREE.Vector3(u, w, v) : axis === 'x' ? (u, v, w) => new THREE.Vector3(w, v, u) : (u, v, w) => new THREE.Vector3(u, v, w);
+    const lo = pts.map((p) => P(p[0], p[1], p[2] ?? a0)), hi = pts.map((p) => P(p[0], p[1], p[3] ?? a1));
+    let area = 0; for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area += a[0] * b[1] - b[0] * a[1]; }
+    const sg = area > 0 ? 1 : -1, ax = P(0, 0, 1).sub(P(0, 0, 0)), out = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, du = pts[j][0] - pts[i][0], dv = pts[j][1] - pts[i][1]; if (du * du + dv * dv < 1e-10) continue;
+      out.copy(P(dv * sg, -du * sg, 0)).sub(P(0, 0, 0));
+      const cs = typeof o.sideColor === 'function' ? col3(o.sideColor(i)) : ks;
+      this.triOut(lo[i], lo[j], hi[j], cs, out); this.triOut(lo[i], hi[j], hi[i], cs, out);
+    }
+    if (o.caps !== false) {
+      const tris = THREE.ShapeUtils.triangulateShape(pts.map((p) => new THREE.Vector2(p[0], p[1])), []), neg = ax.clone().negate();
+      for (const [a, b, d] of tris) { if (o.caps !== 'hi') this.triOut(lo[a], lo[b], lo[d], col3(o.lo ?? c), neg); if (o.caps !== 'lo') this.triOut(hi[a], hi[b], hi[d], col3(o.hi ?? c), ax); }
+    }
+    return this;
   }
   // Convex polygon (fan). `outward` is a point the face must look away from.
   poly(pts, c, inside) {
@@ -101,6 +127,7 @@ export class GeoBuilder {
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    g.setAttribute('aSurf', new THREE.Float32BufferAttribute(this.srf, 1));
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     g.computeBoundingSphere();
     return g;

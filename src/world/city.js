@@ -8,6 +8,7 @@ import { Colliders } from './collide.js';
 import { Props } from './props.js';
 import * as TX from '../gfx/textures.js';
 import * as LM from './landmarks.js';
+import { wetGround } from '../gfx/wet.js';
 
 export const MAP = 300;
 export const ROUND = { x: -130, z: 0, r: 50 };
@@ -286,7 +287,7 @@ export function buildCity(scene) {
   // asphalt only east/south of the quay lines: build as a box-clipped plane
   const gA = new THREE.PlaneGeometry(1500, 1500); gA.rotateX(-Math.PI / 2); gA.translate(-MAP + 750, 0, -MAP + 750);
   const am = TX.asphaltMaps(); for (const t of [am.map, am.normal, am.rough]) t.repeat.set(250, 250);
-  add(gA, std({ map: am.map, normalMap: am.normal, roughnessMap: am.rough, roughness: 1, metalness: 0, envMapIntensity: 0.6 }), { cast: false });
+  add(gA, wetGround(std({ map: am.map, normalMap: am.normal, roughnessMap: am.rough, normalScale: new THREE.Vector2(0.45, 0.45), roughness: 1, metalness: 0, envMapIntensity: 0.8 }), { pud: 0.55 }), { cast: false });
   const wG = new THREE.PlaneGeometry(5000, 5000); wG.rotateX(-Math.PI / 2); wG.translate(0, -3, 0);
   add(wG, std({ color: 0x2c3a3c, roughness: 0.2, metalness: 0.85, envMapIntensity: 1.0, normalMap: am.normal, normalScale: new THREE.Vector2(0.25, 0.25) }), { cast: false });
   for (let i = 0; i < TX.FACADE_COUNT; i++) {
@@ -296,13 +297,13 @@ export function buildCity(scene) {
   }
   C.shop.forEach((b, i) => { if (b.pos.length) add(b.build(), std({ map: TX.shopfrontTexture(i), roughness: 0.5, metalness: 0.2 })); });
   const tp = (tone, rep) => { const t = TX.pavingTexture(tone); return t; };
-  add(C.conc.build(0.2), std({ vertexColors: true, roughness: 0.86, metalness: 0.04 }));
-  const pv = (tone, rough) => { const t = tp(tone); return std({ map: t.map, normalMap: t.normal, vertexColors: true, roughness: rough, envMapIntensity: 0.5 }); };
+  add(C.conc.build(0.2), std({ vertexColors: true, roughness: 0.62, metalness: 0.04 }));
+  const pv = (tone, rough) => { const t = tp(tone); return wetGround(std({ map: t.map, normalMap: t.normal, vertexColors: true, roughness: rough, envMapIntensity: 0.7 }), { pud: 0.64 }); };
   add(C.pave.build(1 / 4.8), pv(0, 0.88), { cast: false });
   add(C.plaza.build(1 / 6), pv(1, 0.7), { cast: false });
   add(C.wood.build(1 / 5), pv(2, 0.85), { cast: false });
   add(C.grass.build(1 / 7), std({ map: TX.grassTexture(), vertexColors: true, roughness: 0.95 }), { cast: false });
-  add(C.marks.build(1), std({ vertexColors: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), { cast: false });
+  add(C.marks.build(1), wetGround(std({ vertexColors: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), { pud: 0.55 }), { cast: false });
   add(C.pearl.build(1), std({ color: 0xa63a66, roughness: 0.2, metalness: 0.8, envMapIntensity: 1.3 }));
   add(C.steel.build(1), std({ color: 0xe0e4e8, roughness: 0.1, metalness: 1, envMapIntensity: 1.4 }));
   add(C.white.build(1), std({ color: 0xf2efe8, roughness: 0.8, side: THREE.DoubleSide }));

@@ -90,11 +90,11 @@ T.push({
   ammo: [22, 12, 8],
   armor: { ufp: [800, 1000], lfp: [300, 370], hside: [70, 220], hrear: [40, 40], htop: [35, 35], hbot: [25, 25], tfront: [820, 1150], mant: [400, 480], tside: [280, 450], trear: [50, 50], ttop: [40, 40] },
   geo: {
-    L: 7.6, W: 3.5, hullH: 1.18, belly: 0.45, glacisLen: 1.45, noseY: 0.8, lfpLen: 0.6, trackW: 0.6, trackH: 0.98, wheels: 6, wheelR: 0.33,
-    turret: { z: 0.35, h: 0.82, prof: [[2.15, 0.36], [1.2, 1.28], [-0.3, 1.48], [-1.9, 1.34], [-2.35, 1.05]], taper: [0.9, 0.86] },
-    gun: { z: 1.5, y: 0.42, len: 6.6, r: 0.088, evac: 0.46, style: 'east' }, mant: [0.42, 0.34],
+    L: 8.1, W: 3.7, hullH: 1.62, belly: 0.48, glacisLen: 1.6, noseY: 1.03, lfpLen: 0.75, trackW: 0.62, trackH: 1.04,
+    turret: { z: 0.2, h: 0.86, prof: [[1.8, 0.42], [1.35, 1.22], [0.15, 1.45], [-0.9, 1.4], [-2.3, 1.0]], taper: [0.92, 0.85] },
+    gun: { z: 1.5, y: 0.4, len: 5.25, r: 0.085, evac: 0.5 }, mant: [0.4, 0.3],
   },
-  camo: { type: 'digital', colors: ['#6b6f4a', '#3c4a33', '#a89a72', '#3a3128'] },
+  camo: { type: 'digital', colors: ['#5e7b36', '#35513a', '#bf9a74', '#252925'], rough: 0.46 },
 });
 
 T.push({
@@ -111,11 +111,11 @@ T.push({
   ammo: [24, 12, 9],
   armor: { ufp: [900, 1200], lfp: [360, 480], hside: [90, 380], hrear: [45, 45], htop: [40, 60], hbot: [30, 30], tfront: [260, 380], mant: [200, 250], tside: [90, 200], trear: [40, 60], ttop: [30, 30] },
   geo: {
-    L: 8.7, W: 3.5, hullH: 1.25, belly: 0.45, glacisLen: 2.3, noseY: 0.85, lfpLen: 0.7, trackW: 0.6, trackH: 1.0, wheels: 7, wheelR: 0.33,
-    turret: { z: -0.45, h: 0.95, prof: [[2.0, 0.5], [1.3, 0.98], [-0.6, 1.16], [-2.1, 1.1], [-2.5, 0.8]], taper: [0.9, 0.8] },
-    gun: { z: 1.5, y: 0.5, len: 7.0, r: 0.09, evac: 0 }, mant: [0.5, 0.4],
+    L: 8.25, W: 3.9, hullH: 1.68, belly: 0.5, glacisLen: 2.3, noseY: 1.1, lfpLen: 0.8, trackW: 0.62, trackH: 1.1,
+    turret: { z: -0.1, h: 0.86, prof: [[2.0, 0.32], [1.15, 0.9], [0.45, 1.1], [-1.2, 1.1], [-2.4, 0.9]], taper: [0.92, 0.78] },
+    gun: { z: 1.85, y: 0.35, len: 4.85, r: 0.088 }, mant: [0.34, 0.28],
   },
-  camo: { type: 'solid', colors: ['#56644a', '#4b5841', '#606e52', '#3a4532'] },
+  camo: { type: 'solid', colors: ['#49553a'], rough: 0.6 },
 });
 
 T.push({
@@ -132,11 +132,11 @@ T.push({
   ammo: [22, 12, 9],
   armor: { ufp: [800, 1100], lfp: [280, 340], hside: [70, 300], hrear: [40, 40], htop: [35, 35], hbot: [25, 25], tfront: [800, 1150], mant: [360, 430], tside: [250, 450], trear: [45, 80], ttop: [40, 40] },
   geo: {
-    L: 6.86, W: 3.78, hullH: 1.1, belly: 0.45, glacisLen: 1.0, noseY: 0.7, lfpLen: 0.55, trackW: 0.6, trackH: 0.95, wheels: 6, wheelR: 0.33,
-    turret: { z: 0.5, h: 0.78, prof: [[1.75, 0.45], [1.25, 1.2], [0.2, 1.5], [-1.0, 1.42], [-1.6, 1.15], [-2.3, 0.95]], taper: [0.88, 0.82] },
-    gun: { z: 1.2, y: 0.4, len: 6.2, r: 0.088, evac: 0.48, style: 'east' }, mant: [0.45, 0.33], bustleAmmo: true, spokes: 6,
+    L: 6.86, W: 3.78, hullH: 1.36, belly: 0.46, glacisLen: 1.43, noseY: 0.89, lfpLen: 0.55, trackW: 0.58, trackH: 1.03,
+    turret: { z: -0.37, h: 0.68, prof: [[1.7, 0.44], [1.25, 1.0], [0.6, 1.3], [-0.6, 1.24], [-1.7, 1.0]], taper: [0.92, 0.84] },
+    gun: { z: 1.45, y: 0.42, len: 4.5, r: 0.085, evac: 0.52 }, mant: [0.38, 0.28],
   },
-  camo: { type: 'blotch', colors: ['#4f5a3c', '#3a4530', '#6b6a48', '#2a2f22'] },
+  camo: { type: 'solid', colors: ['#555b4c'], rough: 0.66 },
 });
 
 T.push({
@@ -153,11 +153,11 @@ T.push({
   ammo: [24, 10, 8],
   armor: { ufp: [600, 700], lfp: [620, 880], hside: [65, 320], hrear: [35, 35], htop: [40, 40], hbot: [25, 25], tfront: [900, 1300], mant: [430, 600], tside: [330, 480], trear: [40, 60], ttop: [45, 45] },
   geo: {
-    L: 7.93, W: 3.66, hullH: 1.2, belly: 0.45, glacisLen: 2.3, noseY: 1.0, lfpLen: 0.75, trackW: 0.63, trackH: 1.0, wheels: 7, wheelR: 0.32,
-    turret: { z: 0.1, h: 0.82, prof: [[2.1, 0.46], [1.55, 1.7], [-0.6, 1.78], [-2.6, 1.42]], taper: [0.92, 0.9] },
-    gun: { z: 1.5, y: 0.42, len: 5.9, r: 0.085, evac: 0.5 }, mant: [0.46, 0.36],
+    L: 7.8, W: 3.66, hullH: 1.6, belly: 0.48, glacisLen: 2.05, noseY: 1.25, lfpLen: 0.65, trackW: 0.635, trackH: 1.3,
+    turret: { z: 0.1, h: 0.85, prof: [[2.4, 0.75], [1.86, 1.68], [0.4, 1.64], [-1.86, 1.47], [-2.3, 1.43]], taper: [0.97, 0.95] },
+    gun: { z: 2.1, y: 0.42, len: 3.75, r: 0.08, evac: 0.56, evacLen: 0.75 }, mant: [0.43, 0.28],
   },
-  camo: { type: 'solid', colors: ['#b3a17c', '#a8956f', '#bfae8a', '#8f7f5f'] },
+  camo: { type: 'solid', colors: ['#a89978'], rough: 0.64 },
 });
 
 T.push({
@@ -174,11 +174,11 @@ T.push({
   ammo: [24, 10, 8],
   armor: { ufp: [770, 900], lfp: [340, 420], hside: [75, 240], hrear: [35, 35], htop: [40, 40], hbot: [25, 25], tfront: [880, 1300], mant: [520, 680], tside: [260, 420], trear: [40, 60], ttop: [45, 45] },
   geo: {
-    L: 7.72, W: 3.74, hullH: 1.22, belly: 0.45, glacisLen: 1.9, noseY: 0.85, lfpLen: 0.65, trackW: 0.63, trackH: 1.0, wheels: 7, wheelR: 0.33,
-    turret: { z: 0.25, h: 0.86, prof: [[2.5, 0.4], [1.05, 1.55], [-0.4, 1.75], [-2.2, 1.65], [-2.6, 1.3]], taper: [0.92, 0.9] },
-    gun: { z: 1.55, y: 0.45, len: 7.0, r: 0.085, evac: 0.42, style: 'wedge' }, mant: [0.42, 0.36], driverX: -0.45, hullAmmo: [0.5, 0],
+    L: 7.7, W: 3.75, hullH: 1.72, belly: 0.5, glacisLen: 2.2, noseY: 1.2, lfpLen: 0.6, trackW: 0.635, trackH: 1.27, driverX: -0.62,
+    turret: { z: 0.3, h: 0.78, prof: [[2.9, 0.2], [2.28, 1.3], [1.3, 1.44], [-0.75, 1.4], [-3.1, 1.32]], taper: [0.96, 0.94] },
+    gun: { z: 1.6, y: 0.33, len: 5.15, r: 0.08, evac: 0.44, evacLen: 0.8 }, mant: [0.44, 0.3],
   },
-  camo: { type: 'nato3', colors: ['#4d5a3d', '#57432f', '#1f211d', '#4d5a3d'] },
+  camo: { type: 'nato3', colors: ['#3e4b33', '#47372b', '#1c1d1b'], rough: 0.6 },
 });
 
 T.push({
@@ -195,11 +195,11 @@ T.push({
   ammo: [18, 7, 6],
   armor: { ufp: [800, 1050], lfp: [300, 480], hside: [80, 380], hrear: [40, 40], htop: [40, 40], hbot: [25, 25], tfront: [920, 1350], mant: [380, 500], tside: [320, 520], trear: [45, 60], ttop: [45, 45] },
   geo: {
-    L: 8.3, W: 3.5, hullH: 1.25, belly: 0.45, glacisLen: 1.7, noseY: 0.9, lfpLen: 0.7, trackW: 0.6, trackH: 1.0, wheels: 6, wheelR: 0.35,
-    turret: { z: 0.2, h: 0.88, prof: [[2.2, 0.5], [1.5, 1.45], [-0.7, 1.6], [-2.5, 1.5], [-2.8, 1.2]], taper: [0.93, 0.9] },
-    gun: { z: 1.55, y: 0.45, len: 7.0, r: 0.085, evac: 0.45 }, mant: [0.5, 0.36],
+    L: 8.1, W: 3.5, hullH: 1.5, belly: 0.5, glacisLen: 1.55, noseY: 1.02, lfpLen: 0.65, trackW: 0.65, trackH: 1.03,
+    turret: { z: 0.05, h: 0.82, prof: [[2.4, 0.56], [1.9, 1.4], [0.9, 1.44], [-1.1, 1.44], [-2.45, 1.38]], taper: [0.96, 0.92] },
+    gun: { z: 2.3, y: 0.32, len: 4.7, r: 0.08, evac: 0.46, evacLen: 0.8 }, mant: [0.45, 0.25],
   },
-  camo: { type: 'solid', colors: ['#474e3a', '#3f4634', '#505842', '#2e3327'] },
+  camo: { type: 'solid', colors: ['#3f4736'], rough: 0.6 },
 });
 
 T.push({
@@ -216,11 +216,11 @@ T.push({
   ammo: [22, 10, 8],
   armor: { ufp: [720, 880], lfp: [300, 400], hside: [70, 300], hrear: [35, 35], htop: [35, 35], hbot: [25, 25], tfront: [720, 950], mant: [340, 430], tside: [240, 400], trear: [40, 50], ttop: [35, 35] },
   geo: {
-    L: 6.88, W: 3.71, hullH: 1.15, belly: 0.45, glacisLen: 1.5, noseY: 0.8, lfpLen: 0.6, trackW: 0.6, trackH: 0.97, wheels: 6, wheelR: 0.33,
-    turret: { z: 0.1, h: 0.8, prof: [[2.1, 0.55], [1.5, 1.35], [-0.8, 1.55], [-2.6, 1.5], [-3.0, 1.2]], taper: [0.93, 0.9] },
-    gun: { z: 1.5, y: 0.42, len: 6.6, r: 0.085, evac: 0 }, mant: [0.5, 0.34],
+    L: 7.0, W: 3.71, hullH: 1.55, belly: 0.48, glacisLen: 2.15, noseY: 1.06, lfpLen: 0.6, trackW: 0.635, trackH: 1.14, driverX: 0.62,
+    turret: { z: 0.23, h: 0.88, prof: [[1.7, 0.62], [1.5, 1.42], [0.95, 1.64], [-1.6, 1.64], [-2.37, 1.06]], taper: [0.96, 0.92] },
+    gun: { z: 1.6, y: 0.45, len: 4.45, r: 0.08 }, mant: [0.4, 0.26],
   },
-  camo: { type: 'splinter', colors: ['#5d6146', '#6e5a40', '#3c4232', '#8c7d5c'] },
+  camo: { type: 'solid', colors: ['#675741'], rough: 0.62 },
 });
 
 for (const d of T) {
