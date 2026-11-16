@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "node build.mjs",
+    "bake": "node tools/bakeao.mjs", "build": "node build.mjs",
     "dev": "node build.mjs --dev"
   },
   "keywords": [],

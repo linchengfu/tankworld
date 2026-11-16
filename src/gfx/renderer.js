@@ -9,10 +9,28 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { WEATHER } from './wet.js';
 import { tankWeather } from '../tank/model.js';
+import { ASSETS, SKY } from './assets.js';
 
-// Low sun breaking under the cloud deck from the west, straight down Century Avenue.
-export const SUN_DIR = new THREE.Vector3(-0.95, 0.27, 0.035).normalize();
-const FOG = new THREE.Color(0.36, 0.35, 0.37);
+// The sun is wherever it sits in the sky panorama; the panorama is turned so that it stands in the south-west,
+// high enough to reach the street between the towers. Rain has just passed: the ground is still wet.
+const SKY_AZ = (SKY.sunUV[0] - 0.5) * Math.PI * 2, SKY_EL = (0.5 - SKY.sunUV[1]) * Math.PI;
+const SUN_OBJ = new THREE.Vector3(Math.cos(SKY_EL) * Math.cos(SKY_AZ), Math.sin(SKY_EL), Math.cos(SKY_EL) * Math.sin(SKY_AZ));
+const SKY_ROT = SKY_AZ - Math.atan2(0.6, -0.8);
+export const SUN_DIR = SUN_OBJ.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), SKY_ROT).normalize();
+const FOG = new THREE.Color(0.47, 0.54, 0.63);
+const skyPhoto = `
+varying vec3 vDir; uniform sampler2D tSky, tHdr; uniform vec3 uFog, uSunObj; uniform float uGain;
+void main(){
+  vec3 d = normalize(vDir);
+  vec2 uv = vec2(atan(d.z, d.x) / 6.28318531 + 0.5, 0.5 + asin(clamp(d.y, -1.0, 1.0)) / 3.14159265);
+  vec3 col = texture2D(tSky, uv).rgb * uGain;
+  vec3 hdr = min(texture2D(tHdr, uv).rgb, vec3(14.0));
+  col = mix(col, hdr, smoothstep(1.6, 4.0, dot(hdr, vec3(0.2126, 0.7152, 0.0722))));
+  float sd = max(dot(d, uSunObj), 0.0); col += vec3(1.0, 0.93, 0.82) * (pow(sd, 500.0) * 8.0 + pow(sd, 24.0) * 0.2);
+  col = mix(uFog, col, smoothstep(-0.01, 0.13, d.y));
+  if (d.y < 0.0) col = mix(uFog, uFog * 0.6, smoothstep(0.0, -0.4, d.y));
+  gl_FragColor = vec4(col, 1.0);
+}`;
 
 const skyVert = `varying vec3 vDir; void main(){ vDir = normalize(position); vec4 p = projectionMatrix * mat4(mat3(modelViewMatrix)) * vec4(position,1.0); gl_Position = p.xyww; }`;
 const skyFrag = `
@@ -55,16 +73,16 @@ const LensShader = {
     vec3 col = vec3(texture2D(tDiffuse, vUv + c*ca).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - c*ca).b);
     // veiling glare when looking toward the low sun
     vec2 sv = (vUv - uSunPos.xy) * vec2(uAspect, 1.0); float sg = exp(-dot(sv, sv) * 2.6) * uSunPos.z;
-    col += vec3(1.0, 0.56, 0.26) * sg * 0.07;
+    col += vec3(1.0, 0.86, 0.66) * sg * 0.05;
     // grade: desaturated, steel-blue shadows, amber highlights, firmer contrast
     float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-    col = mix(vec3(l), col, 0.84);
-    col *= mix(vec3(0.90, 0.98, 1.10), vec3(1.07, 1.0, 0.90), smoothstep(0.08, 0.7, l));
-    col = mix(col, col * col * (3.0 - 2.0 * col), 0.22);
-    col *= 1.0 - smoothstep(0.42, 1.05, r) * (0.42 + uScope * 0.3);
+    col = mix(vec3(l), col, 1.04);
+    col *= mix(vec3(0.96, 0.99, 1.05), vec3(1.03, 1.0, 0.96), smoothstep(0.08, 0.7, l));
+    col = mix(col, col * col * (3.0 - 2.0 * col), 0.2);
+    col *= 1.0 - smoothstep(0.45, 1.05, r) * (0.3 + uScope * 0.35);
     col = mix(col, vec3(dot(col, vec3(0.3,0.59,0.11))) * vec3(1.0,0.92,0.85), uDead * 0.75);
     col = mix(col, col * vec3(1.25,0.55,0.45), uHit * smoothstep(0.2, 0.9, r));
-    col += (h(vUv * 811.0) - 0.5) * 0.034;
+    col += (h(vUv * 811.0) - 0.5) * 0.022;
     gl_FragColor = vec4(col, 1.0);
   }`,
 };
@@ -90,25 +108,28 @@ function makeRain(n = 2600, R = 20, Hh = 24) {
 export function createGfx(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(FOG, 0.0019);
+  scene.fog = new THREE.FogExp2(FOG, 0.0015);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 6000);
 
-  const skyU = { uSun: { value: SUN_DIR }, uFog: { value: FOG }, uTime: WEATHER.uTime };
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.ShaderMaterial({ vertexShader: skyVert, fragmentShader: skyFrag, uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false }));
+  const photo = ASSETS.ok;
+  if (!photo) SUN_DIR.set(-0.62, 0.74, 0.26).normalize();
+  const skyU = photo ? { tSky: { value: ASSETS.sky }, tHdr: { value: ASSETS.skyHdr }, uFog: { value: FOG }, uSunObj: { value: SUN_OBJ }, uGain: { value: SKY.gain } } : { uSun: { value: SUN_DIR }, uFog: { value: FOG }, uTime: WEATHER.uTime };
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.ShaderMaterial({ vertexShader: skyVert, fragmentShader: photo ? skyPhoto : skyFrag, uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false }));
+  if (photo) sky.rotation.y = SKY_ROT;
   sky.frustumCulled = false; sky.renderOrder = -10; sky.userData.noAO = true; scene.add(sky);
   // reflections come from the same sky until the city has been captured
   const pm = new THREE.PMREMGenerator(renderer), envScene = new THREE.Scene(); envScene.add(sky.clone());
   const env = pm.fromScene(envScene, 0, 0.1, 100).texture; scene.environment = env; scene.environmentIntensity = 1.15; pm.dispose();
 
-  const sun = new THREE.DirectionalLight(0xffc698, 4.4);
+  const sun = new THREE.DirectionalLight(0xfff1dd, 4.6);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.07;
   const sc = sun.shadow.camera; sc.left = -80; sc.right = 80; sc.top = 80; sc.bottom = -80; sc.near = 10; sc.far = 2200;
   scene.add(sun, sun.target);
-  scene.add(new THREE.HemisphereLight(0x9bb0d0, 0x5a4e44, 2.3));
+  scene.add(new THREE.HemisphereLight(0xbfd3ee, 0x7a7268, 1.25));
   const rain = makeRain(); scene.add(rain);
-  tankWeather.wet.value = 0.8; tankWeather.dust.value.setRGB(0.07, 0.062, 0.052);
+  tankWeather.wet.value = 0.3; tankWeather.dust.value.setRGB(0.1, 0.088, 0.07); WEATHER.uRain.value = 0.12; WEATHER.uWet.value = 0.8; rain.visible = false;
 
   // planar reflection of everything above the road, mip-mapped so rougher surfaces can read blurrier levels
   const reflRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
@@ -137,7 +158,7 @@ export function createGfx(canvas) {
   }
 
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
-  const renderPass = new RenderPass(scene, camera), bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.34, 0.7, 1.0), lens = new ShaderPass(LensShader);
+  const renderPass = new RenderPass(scene, camera), bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.26, 0.6, 1.05), lens = new ShaderPass(LensShader);
   // ground-truth ambient occlusion on the high setting: grounds vehicles, street furniture and building bases
   const ao = new GTAOPass(scene, camera, 256, 256, undefined, { radius: 1.1, distanceExponent: 1.4, thickness: 1.4, scale: 1.3, samples: 8, distanceFallOff: 1, screenSpaceRadius: false }, { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 8, radiusExponent: 2, rings: 2, samples: 8 });
   ao.blendIntensity = 0.9;
@@ -152,7 +173,7 @@ export function createGfx(canvas) {
       const dpr = Math.min(window.devicePixelRatio || 1, q === 'high' ? 2 : q === 'mid' ? 1.4 : 1);
       renderer.setPixelRatio(dpr); composer.setPixelRatio(dpr);
       this.usePost = q !== 'low'; bloom.enabled = q !== 'low'; ao.enabled = q === 'high';
-      this.reflScale = q === 'high' ? 0.5 : q === 'mid' ? 0.35 : 0; rain.visible = true;
+      this.reflScale = q === 'high' ? 0.5 : q === 'mid' ? 0.35 : 0;
       renderer.shadowMap.enabled = true; sun.castShadow = q !== 'low';
       sun.shadow.mapSize.set(q === 'high' ? 4096 : 2048, q === 'high' ? 4096 : 2048); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
       this.resize();

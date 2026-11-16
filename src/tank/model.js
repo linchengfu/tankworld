@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { GeoBuilder, surf } from './geom.js';
 import { SHAPES } from './vehicles.js';
+import { AO } from './ao.gen.js';
 import { hullBody, runningGear, trackSampler, trackLink } from './parts.js';
 import { camoTexture, armorDetail, blobShadow, markTexture, insigniaTexture } from '../gfx/textures.js';
 
@@ -12,12 +13,27 @@ import { camoTexture, armorDetail, blobShadow, markTexture, insigniaTexture } fr
 export const tankWeather = { wet: { value: 0.0 }, dust: { value: new THREE.Color(0.105, 0.092, 0.074) } };
 const geoCache = new Map(), matCache = new Map();
 
-function geometryFor(def) {
-  if (geoCache.has(def.id)) return geoCache.get(def.id);
+// The three GeoBuilders of one vehicle, before they become BufferGeometries. Shared with tools/bakeao.mjs, which must
+// see exactly the vertex order the game will build.
+export function tankBuilders(def) {
   const S = SHAPES[def.id], g = def.geo, H = new GeoBuilder(), T = new GeoBuilder(), G = new GeoBuilder();
   hullBody(H, S.hull); runningGear(H, S.gear, g.W / 2 - g.trackW / 2, g.trackW);
   S.build(H, T, G, def);
   T.cyl(1.06, 0.1, 0, -0.01, 0, { seg: 28, c: surf(0.16, 2) });                  // turret ring
+  for (const B of [H, T, G]) B.subdivide(0.38);
+  return { H, T, G };
+}
+const unpack = (b64) => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+// Multiply baked occlusion into the vertex tint (skipped, with a warning, if the bake is stale).
+function occlude(B, b64, what) {
+  if (!b64) return; const ao = unpack(b64);
+  if (ao.length !== B.pos.length / 3) { console.warn('baked AO is stale for ' + what + ' — run `npm run bake`'); return; }
+  for (let i = 0; i < ao.length; i++) { const k = ao[i] / 255; B.col[i * 3] *= k; B.col[i * 3 + 1] *= k; B.col[i * 3 + 2] *= k; }
+}
+function geometryFor(def) {
+  if (geoCache.has(def.id)) return geoCache.get(def.id);
+  const S = SHAPES[def.id], g = def.geo, { H, T, G } = tankBuilders(def), ao = AO[def.id] || {};
+  occlude(H, ao.hull, def.id + ' hull'); occlude(T, ao.turret, def.id + ' turret'); occlude(G, ao.gun, def.id + ' gun');
   const path = trackSampler(S.gear), links = Math.round(path.total / 0.165), pitch = path.total / links, K = new GeoBuilder();
   trackLink(K, g.trackW, pitch, def.nation === 'ru' ? 'bar' : 'pad');
   const out = { hull: H.build(), turret: T.build(), gun: G.build(), link: K.build(), path, links, pitch };

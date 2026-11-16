@@ -32,7 +32,7 @@ const MASK = `
   float depth = n1 * 0.58 + n2 * 0.36 + n3 * 0.06 - uPud;
   gPud = smoothstep(0.0, 0.022, depth) * uWet;
   gDamp = uWet * (0.78 + 0.22 * smoothstep(-0.16, 0.0, depth));
-  diffuseColor.rgb *= mix(1.0, 0.5, gDamp);
+  diffuseColor.rgb *= mix(1.0, 0.66, gDamp);
   diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45 + vec3(0.004, 0.005, 0.006), gPud);
   gSlope = vec2(0.0);
   if (gPud > 0.01 && gDist < 42.0) {

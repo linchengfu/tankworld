@@ -106,7 +106,7 @@ export class Game {
   // ---- hooks called by tanks / shells / AI
   sees(a, b) { return this.los[a.id * this.N + b.id] === 1; }
   spawnShell(owner, pos, dir, shell) { this.shells.spawn(owner, pos, dir, shell); }
-  onFire(t) { this.fx.muzzle(t.muzzle, t.gunDir); this.audio.cannon(t.muzzle, t === this.view); if (t === this.view) this.fx.shake = Math.min(1.2, this.fx.shake + 0.55); t.seenT = this.time; t.lastX = t.x; t.lastZ = t.z; }
+  onFire(t) { this.fx.muzzle(t.muzzle, t.gunDir); this.audio.cannon(t.muzzle, t === this.view); if (t === this.player) this.audio.reloadStart(t.def.autoloader, t.reloadTotal); if (t === this.view) this.fx.shake = Math.min(1.2, this.fx.shake + 0.55); t.seenT = this.time; t.lastX = t.x; t.lastZ = t.z; }
   onReloaded(t) { if (t === this.player) this.audio.reloaded(t.def.autoloader); }
   onBump(t, v) { if (t === this.view) { this.audio.crunch(t.muzzle, 'barrier'); this.fx.shake = Math.min(1, this.fx.shake + v * 0.03); } }
   onCrush(t, it) { this.fx.crush(it.x, it.y, it.z, it.kind); this.audio.crunch(it, it.kind); }

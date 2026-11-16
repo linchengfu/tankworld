@@ -115,6 +115,24 @@ export class GeoBuilder {
     const g = new THREE.LatheGeometry(prof.map(([r, o]) => new THREE.Vector2(r, o)), seg); g.rotateZ(side > 0 ? -Math.PI / 2 : Math.PI / 2);
     this.addGeometry(g, this.xf(x, y, z), c); g.dispose(); return this;
   }
+  // Split any triangle with an edge longer than maxEdge (at that edge's midpoint) so per-vertex data such as baked
+  // occlusion has somewhere to live on big flat plates. Deterministic: the same build always yields the same order.
+  subdivide(maxEdge) {
+    const P = this.pos, N = this.nor, C = this.col, S = this.srf, oP = [], oN = [], oC = [], oS = [], m2 = maxEdge * maxEdge;
+    const stack = [];
+    for (let t = 0; t < P.length; t += 9) {
+      stack.length = 0; stack.push([[P[t], P[t + 1], P[t + 2], N[t], N[t + 1], N[t + 2]], [P[t + 3], P[t + 4], P[t + 5], N[t + 3], N[t + 4], N[t + 5]], [P[t + 6], P[t + 7], P[t + 8], N[t + 6], N[t + 7], N[t + 8]], 0]);
+      const c = [C[t], C[t + 1], C[t + 2]], sf = S[t / 3];
+      while (stack.length) {
+        const [a, b2, c2, depth] = stack.pop(), v = [a, b2, c2]; let best = -1, bl = m2;
+        for (let i = 0; i < 3; i++) { const p = v[i], q = v[(i + 1) % 3], d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2; if (d > bl) { bl = d; best = i; } }
+        if (best < 0 || depth > 7) { for (const p of v) { oP.push(p[0], p[1], p[2]); oN.push(p[3], p[4], p[5]); oC.push(c[0], c[1], c[2]); oS.push(sf); } continue; }
+        const p = v[best], q = v[(best + 1) % 3], r = v[(best + 2) % 3], mid = p.map((x, i) => (x + q[i]) / 2);
+        stack.push([p, mid, r, depth + 1], [mid, q, r, depth + 1]);
+      }
+    }
+    this.pos = oP; this.nor = oN; this.col = oC; this.srf = oS; return this;
+  }
   build(uvScale = 0.25) {
     const g = new THREE.BufferGeometry(), n = this.pos.length / 3, uv = new Float32Array(n * 2);
     for (let i = 0; i < n; i++) {

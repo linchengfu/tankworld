@@ -1,5 +1,7 @@
-// All sound is synthesised with WebAudio: diesel/turbine engine loop, track clatter, cannon reports with a
-// city-canyon echo, armour clangs, explosions and UI ticks. Nothing is loaded from disk.
+// All sound is synthesised with WebAudio; nothing is loaded from disk or sampled from another game.
+// Engine: a loop of individual firing pulses (V12 diesel) or a whine-and-roar stack (gas turbine), pitched by rpm,
+// with turbo whistle and gearbox whine. Tracks: a link-by-link click train plus squeal in turns. Cannon: crack,
+// boom, breech clank and slap-back echoes off the street canyon. Reload: the breech and loader working through the cycle.
 import { clamp, rand } from './core/util.js';
 
 export class Audio {
@@ -25,37 +27,60 @@ export class Audio {
   setVolume(v) { this.vol = v; if (this.master) this.master.gain.value = v; }
   suspend(on) { if (this.ctx) { if (on) this.ctx.suspend(); else this.ctx.resume(); } }
 
+  // A loop of discrete firing pulses: 8 engine cycles of 12 cylinders with an uneven bank, so it lopes instead of buzzing.
+  pulseLoop() {
+    const c = this.ctx, sr = c.sampleRate, cyc = 0.17, n = 8, len = Math.floor(sr * cyc * n), b = c.createBuffer(1, len, sr), d = b.getChannelData(0), amp = [1, 0.6, 0.82, 0.55, 0.92, 0.6, 0.76, 0.5, 0.96, 0.62, 0.7, 0.55];
+    for (let k = 0; k < n * 12; k++) {
+      const t0 = Math.floor(((k + (k % 2 ? 0.08 : 0)) / 12) * cyc * sr), a = amp[k % 12] * rand(0.85, 1.1), f = rand(82, 96), tau = 0.011 * sr, m = Math.floor(0.05 * sr);
+      for (let i = 0; i < m; i++) { const j = (t0 + i) % len, e = Math.exp(-i / tau); d[j] += a * e * (Math.sin((6.2832 * f * i) / sr) * 0.9 + (Math.random() * 2 - 1) * 0.35 * Math.exp(-i / (tau * 0.3))); }
+    }
+    return b;
+  }
+  // Track links meeting the sprocket: one click per link at 1 m/s, each a short metallic ring.
+  linkLoop() {
+    const c = this.ctx, sr = c.sampleRate, n = 12, len = Math.floor((sr * n) / 6.06), b = c.createBuffer(1, len, sr), d = b.getChannelData(0);
+    for (let k = 0; k < n; k++) { const t0 = Math.floor((k / n) * len + rand(-0.004, 0.004) * sr), a = rand(0.6, 1), f1 = rand(1500, 2100), f2 = rand(2800, 3600), m = Math.floor(0.03 * sr); for (let i = 0; i < m; i++) { const j = (t0 + i + len) % len, e = Math.exp(-i / (0.006 * sr)); d[j] += a * e * (Math.sin((6.2832 * f1 * i) / sr) * 0.5 + Math.sin((6.2832 * f2 * i) / sr) * 0.3 + (Math.random() * 2 - 1) * 0.5); } }
+    return b;
+  }
   buildEngine() {
     const c = this.ctx, g = (this.engGain = c.createGain()); g.gain.value = 0;
-    const lp = (this.engLP = c.createBiquadFilter()); lp.type = 'lowpass'; lp.frequency.value = 300; lp.Q.value = 1.2;
-    this.eng = [0, 1, 2].map((i) => { const o = c.createOscillator(); o.type = i === 2 ? 'square' : 'sawtooth'; o.frequency.value = 40; const og = c.createGain(); og.gain.value = [0.5, 0.35, 0.16][i]; o.connect(og); og.connect(lp); o.start(); return o; });
-    const lfo = (this.engLfo = c.createOscillator()); lfo.frequency.value = 11; const lg = c.createGain(); lg.gain.value = 0.3; lfo.connect(lg); lg.connect(g.gain); lfo.start();
-    lp.connect(this.shaper(2.2)).connect(g); g.connect(this.master);
-    // rumble + track clatter from noise
+    const lp = (this.engLP = c.createBiquadFilter()); lp.type = 'lowpass'; lp.frequency.value = 500; lp.Q.value = 0.9;
+    const src = (this.engSrc = c.createBufferSource()); src.buffer = this.pulseLoop(); src.loop = true; src.start();
+    const body = c.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 110; body.Q.value = 1.1; body.gain.value = 9;
+    src.connect(body); body.connect(lp); lp.connect(this.shaper(1.8)).connect(g); g.connect(this.master);
+    // exhaust rumble and broadband roar from noise
     const n = c.createBufferSource(); n.buffer = this.noise; n.loop = true; n.start();
-    const rb = c.createBiquadFilter(); rb.type = 'lowpass'; rb.frequency.value = 120; this.rumble = c.createGain(); this.rumble.gain.value = 0; n.connect(rb); rb.connect(this.rumble); this.rumble.connect(this.master);
-    const tb = c.createBiquadFilter(); tb.type = 'bandpass'; tb.frequency.value = 1100; tb.Q.value = 0.8; this.trackG = c.createGain(); this.trackG.gain.value = 0; n.connect(tb); tb.connect(this.trackG); this.trackG.connect(this.master);
-    const tl = (this.trackLfo = c.createOscillator()); tl.type = 'square'; tl.frequency.value = 8; const tg = (this.trackLfoG = c.createGain()); tg.gain.value = 0; tl.connect(tg); tg.connect(this.trackG.gain); tl.start();
-    // turbine whine (Abrams) and turret traverse hum
+    const rb = c.createBiquadFilter(); rb.type = 'lowpass'; rb.frequency.value = 110; this.rumble = c.createGain(); this.rumble.gain.value = 0; n.connect(rb); rb.connect(this.rumble); this.rumble.connect(this.master);
+    const ro = (this.roarF = c.createBiquadFilter()); ro.type = 'bandpass'; ro.frequency.value = 900; ro.Q.value = 0.5; this.roar = c.createGain(); this.roar.gain.value = 0; n.connect(ro); ro.connect(this.roar); this.roar.connect(this.master);
+    // tracks: click train + squeal
+    const tk = (this.trackSrc = c.createBufferSource()); tk.buffer = this.linkLoop(); tk.loop = true; tk.start();
+    const tb = c.createBiquadFilter(); tb.type = 'highpass'; tb.frequency.value = 700; this.trackG = c.createGain(); this.trackG.gain.value = 0; tk.connect(tb); tb.connect(this.trackG); this.trackG.connect(this.master);
+    const sq = c.createBiquadFilter(); sq.type = 'bandpass'; sq.frequency.value = 3100; sq.Q.value = 9; this.squeal = c.createGain(); this.squeal.gain.value = 0; n.connect(sq); sq.connect(this.squeal); this.squeal.connect(this.master);
+    // turbo / turbine whine, gearbox whine, turret traverse
     this.whine = c.createOscillator(); this.whine.type = 'sine'; this.whine.frequency.value = 1800; this.whineG = c.createGain(); this.whineG.gain.value = 0; this.whine.connect(this.whineG); this.whineG.connect(this.master); this.whine.start();
-    this.hum = c.createOscillator(); this.hum.type = 'triangle'; this.hum.frequency.value = 170; this.humG = c.createGain(); this.humG.gain.value = 0; this.hum.connect(this.humG); this.humG.connect(this.master); this.hum.start();
+    this.gear = c.createOscillator(); this.gear.type = 'triangle'; this.gear.frequency.value = 300; this.gearG = c.createGain(); this.gearG.gain.value = 0; this.gear.connect(this.gearG); this.gearG.connect(this.master); this.gear.start();
+    this.hum = c.createOscillator(); this.hum.type = 'sawtooth'; this.hum.frequency.value = 170; const hf = c.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 900; hf.Q.value = 2; this.humG = c.createGain(); this.humG.gain.value = 0; this.hum.connect(hf); hf.connect(this.humG); this.humG.connect(this.master); this.hum.start();
+    this.rpm = 0.2;
   }
   // per-frame: follow the player's tank (or silence when t is null)
   engine(t, dt) {
     if (!this.ready) return;
     const now = this.ctx.currentTime, tc = 0.08;
-    if (!t || !t.alive) { for (const g of [this.engGain, this.rumble, this.trackG, this.whineG, this.humG, this.trackLfoG]) g.gain.setTargetAtTime(0, now, 0.2); return; }
-    const maxF = t.def.vmax / 3.6, sp = Math.abs(t.speed) / maxF, load = clamp(Math.abs(t.ctl.throttle) * (1 - sp * 0.5) + Math.abs(t.yawRate) * 0.8, 0, 1), on = t.engineK() > 0 ? 1 : 0;
-    const rpm = 0.22 + ((sp * 3.2) % 1) * 0.22 + sp * 0.35 + load * 0.25, f = 34 + rpm * 78;
-    this.eng[0].frequency.setTargetAtTime(f, now, tc); this.eng[1].frequency.setTargetAtTime(f * 1.503, now, tc); this.eng[2].frequency.setTargetAtTime(f * 0.5, now, tc);
-    this.engLfo.frequency.setTargetAtTime(7 + rpm * 16, now, tc);
-    this.engLP.frequency.setTargetAtTime(210 + rpm * 520 + load * 380, now, tc);
-    this.engGain.gain.setTargetAtTime(on * (t.def.turbine ? 0.1 : 0.2 + load * 0.1), now, tc);
-    this.rumble.gain.setTargetAtTime(on * (0.35 + load * 0.3), now, tc);
-    this.whine.frequency.setTargetAtTime(1500 + rpm * 2300, now, 0.25); this.whineG.gain.setTargetAtTime(on * (t.def.turbine ? 0.035 + load * 0.02 : 0.004), now, tc);
-    const tv = clamp(Math.abs(t.speed) / 12 + Math.abs(t.yawRate) * 0.5, 0, 1);
-    this.trackG.gain.setTargetAtTime(tv * 0.07, now, tc); this.trackLfoG.gain.setTargetAtTime(tv * 0.05, now, tc); this.trackLfo.frequency.setTargetAtTime(5 + Math.abs(t.speed) * 2.4, now, tc);
-    this.humG.gain.setTargetAtTime(clamp(t.turretRate * 0.12, 0, 0.045), now, 0.05);
+    if (!t || !t.alive) { for (const g of [this.engGain, this.rumble, this.roar, this.trackG, this.squeal, this.whineG, this.gearG, this.humG]) g.gain.setTargetAtTime(0, now, 0.2); return; }
+    const maxF = t.def.vmax / 3.6, sp = Math.abs(t.speed) / maxF, load = clamp(Math.abs(t.ctl.throttle) * (1 - sp * 0.5) + Math.abs(t.yawRate) * 0.8, 0, 1), on = t.engineK() > 0 ? 1 : 0, turb = !!t.def.turbine;
+    // revs climb through each gear and drop on the shift; they lag the throttle like a heavy flywheel
+    const target = 0.16 + ((sp * 3.4) % 1) * 0.3 + sp * 0.3 + load * 0.28; this.rpm += (target - this.rpm) * Math.min(1, dt * (target > this.rpm ? 2.2 : 1.3)); const rpm = this.rpm;
+    this.engSrc.playbackRate.setTargetAtTime(0.85 + rpm * 2.3, now, tc);
+    this.engLP.frequency.setTargetAtTime(260 + rpm * 900 + load * 700, now, tc);
+    this.engGain.gain.setTargetAtTime(on * (turb ? 0.05 : 0.3 + load * 0.16), now, tc);
+    this.rumble.gain.setTargetAtTime(on * (0.3 + load * 0.35), now, tc);
+    this.roarF.frequency.setTargetAtTime(turb ? 1500 + rpm * 1800 : 600 + rpm * 900, now, tc); this.roar.gain.setTargetAtTime(on * (turb ? 0.05 + rpm * 0.09 : load * 0.035), now, tc);
+    this.whine.frequency.setTargetAtTime(turb ? 2600 + rpm * 4200 : 3200 + rpm * 4800 + load * 1500, now, 0.3); this.whineG.gain.setTargetAtTime(on * (turb ? 0.03 + rpm * 0.03 : load * rpm * 0.016), now, 0.15);
+    this.gear.frequency.setTargetAtTime(180 + Math.abs(t.speed) * 52, now, tc); this.gearG.gain.setTargetAtTime(on * clamp(sp * 0.03, 0, 0.022), now, tc);
+    const v = Math.abs(t.speed) + Math.abs(t.yawRate) * 2.2;
+    this.trackSrc.playbackRate.setTargetAtTime(clamp(v, 0.3, 22), now, tc); this.trackG.gain.setTargetAtTime(clamp(v / 9, 0, 1) * 0.11, now, tc);
+    this.squeal.gain.setTargetAtTime(clamp(Math.abs(t.yawRate) * (0.4 + sp) * 0.05, 0, 0.03), now, 0.12);
+    this.hum.frequency.setTargetAtTime(150 + t.turretRate * 90, now, 0.05); this.humG.gain.setTargetAtTime(clamp(t.turretRate * 0.2, 0, 0.06), now, 0.05);
   }
   // distance model: returns { gain, lp cutoff, delay }
   at(p) {
@@ -81,11 +106,32 @@ export class Audio {
     o.connect(g); g.connect(dst); o.start(t0); o.stop(t0 + dur + 0.05);
   }
   cannon(p, own) {
-    if (!this.ready) return; const a = own ? { g: 1, lp: 16000, dl: 0, pan: 0 } : this.at(p), t0 = this.ctx.currentTime + a.dl, o = this.out(a, own ? 0.6 : 0.7);
-    this.burst(o, t0, 0.09, 6000, 900, own ? 1.3 : 1.1, 0.5);           // crack
-    this.burst(o, t0, own ? 0.9 : 1.2, 1800, 60, own ? 1.2 : 1.0, 0.6); // body
-    this.tone(o, t0, 0.5, 95, 28, own ? 1.3 : 0.9);                      // chest thump
-    this.burst(o, t0 + 0.12, 1.6, 420, 70, 0.4, 0.4);                    // rolling tail
+    if (!this.ready) return; const a = own ? { g: 1, lp: 16000, dl: 0, pan: 0 } : this.at(p), t0 = this.ctx.currentTime + a.dl, o = this.out(a, own ? 0.55 : 0.75);
+    this.burst(o, t0, 0.035, 9000, 2500, own ? 1.6 : 1.2, 0.4, 'highpass');   // muzzle crack
+    this.burst(o, t0, own ? 0.75 : 1.1, 2200, 55, own ? 1.3 : 1.05, 0.6);     // blast body
+    this.tone(o, t0, 0.65, 130, 26, own ? 1.6 : 1.0);                         // pressure thump
+    this.tone(o, t0, 0.22, 62, 40, own ? 0.9 : 0.4);
+    if (own) { this.clang(o, t0 + 0.045, 0.3, true); this.burst(o, t0 + 0.06, 0.18, 700, 120, 0.7); }          // breech slams back, hull rocks
+    // the report coming back off the towers: discrete slaps, each duller and later, then the wash
+    for (const [dl, g, f] of [[0.19, 0.42, 1500], [0.41, 0.3, 1000], [0.74, 0.2, 700], [1.2, 0.12, 480]]) this.burst(o, t0 + dl * rand(0.9, 1.1), 0.5, f, 70, g * (own ? 1 : 0.8), 0.5);
+    this.burst(o, t0 + 0.1, 2.4, 380, 60, 0.38, 0.4);
+    if (own && this.engGain) { const n = this.ctx.currentTime; for (const g of [this.engGain, this.rumble, this.trackG]) { g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(g.gain.value * 0.25, n, 0.01); } }   // the blast swamps everything for a moment
+  }
+  // The gun being served after a shot, spread over the reload: breech opens, the case goes, the loader (or the machine)
+  // brings the next round up and rams it, the breech closes. Ends just before reloaded() calls it ready.
+  reloadStart(auto, dur) {
+    if (!this.ready || !(dur > 1.5)) return; const t0 = this.ctx.currentTime, o = this.out({ g: 0.55, lp: 8000, dl: 0, pan: 0 }, 0.06);
+    this.clang(o, t0 + 0.32, 0.22, true); this.burst(o, t0 + 0.32, 0.07, 2600, 500, 0.5);                                             // breech block drops
+    this.burst(o, t0 + 0.62, 0.22, 5200, 2600, 0.16, 4, 'bandpass'); this.tone(o, t0 + 0.66, 0.3, 2300, 1900, 0.05, 'triangle');      // case clatters out
+    if (auto) {
+      const c = this.ctx, w = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(), a0 = t0 + 0.95, a1 = t0 + dur - 1.25; if (a1 > a0 + 0.3) { w.type = 'sawtooth'; w.frequency.setValueAtTime(140, a0); w.frequency.linearRampToValueAtTime(210, a0 + 0.3); w.frequency.setValueAtTime(210, a1 - 0.25); w.frequency.linearRampToValueAtTime(120, a1); f.type = 'bandpass'; f.frequency.value = 850; f.Q.value = 1.5; g.gain.setValueAtTime(0.0001, a0); g.gain.linearRampToValueAtTime(0.11, a0 + 0.15); g.gain.setValueAtTime(0.11, a1 - 0.15); g.gain.linearRampToValueAtTime(0.0001, a1); w.connect(f); f.connect(g); g.connect(o); w.start(a0); w.stop(a1 + 0.05); }
+      for (let k = 0; a0 + 0.5 + k * 0.42 < a1; k++) this.burst(o, a0 + 0.5 + k * 0.42, 0.03, 3200, 1400, 0.18);                      // carousel indexing
+      this.burst(o, t0 + dur - 1.1, 0.5, 1400, 300, 0.3, 1.2, 'bandpass'); this.tone(o, t0 + dur - 0.62, 0.1, 150, 60, 0.5, 'square');    // rammer runs out and seats the round
+    } else {
+      this.burst(o, t0 + dur * 0.38, 0.45, 2400, 900, 0.14, 1.5, 'bandpass');                                                           // round slides from the rack
+      this.burst(o, t0 + dur - 1.0, 0.3, 1800, 400, 0.3, 1.2, 'bandpass'); this.tone(o, t0 + dur - 0.72, 0.09, 170, 70, 0.5, 'square'); // rammed home
+    }
+    this.clang(o, t0 + dur - 0.3, 0.3, true); this.burst(o, t0 + dur - 0.3, 0.06, 3000, 600, 0.55);                                    // breech closes
   }
   impact(p, kind) {
     if (!this.ready) return; const a = this.at(p), t0 = this.ctx.currentTime + a.dl, o = this.out(a, 0.3);

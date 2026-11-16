@@ -9,6 +9,7 @@ import { Props } from './props.js';
 import * as TX from '../gfx/textures.js';
 import * as LM from './landmarks.js';
 import { wetGround } from '../gfx/wet.js';
+import { ASSETS } from '../gfx/assets.js';
 
 export const MAP = 300;
 export const ROUND = { x: -130, z: 0, r: 50 };
@@ -286,8 +287,12 @@ export function buildCity(scene) {
   const std = (p) => new THREE.MeshStandardMaterial(p);
   // asphalt only east/south of the quay lines: build as a box-clipped plane
   const gA = new THREE.PlaneGeometry(1500, 1500); gA.rotateX(-Math.PI / 2); gA.translate(-MAP + 750, 0, -MAP + 750);
-  const am = TX.asphaltMaps(); for (const t of [am.map, am.normal, am.rough]) t.repeat.set(250, 250);
-  add(gA, wetGround(std({ map: am.map, normalMap: am.normal, roughnessMap: am.rough, normalScale: new THREE.Vector2(0.45, 0.45), roughness: 1, metalness: 0, envMapIntensity: 0.8 }), { pud: 0.55 }), { cast: false });
+  // road surface: photographed asphalt when the assets decoded, the painted canvas otherwise
+  const am = ASSETS.ok ? { map: ASSETS.asphalt.map, normal: ASSETS.asphalt.normal, rough: ASSETS.asphalt.arm } : TX.asphaltMaps();
+  for (const t of [am.map, am.normal, am.rough]) t.repeat.set(ASSETS.ok ? 300 : 250, ASSETS.ok ? 300 : 250);
+  const roadMat = std({ map: am.map, normalMap: am.normal, roughnessMap: am.rough, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 1, metalness: 0, envMapIntensity: 0.9 });
+  if (ASSETS.ok) roadMat.color.setRGB(1.55, 1.55, 1.58);            // the photographed asphalt is darker than a sunlit road reads
+  add(gA, wetGround(roadMat, { pud: 0.57 }), { cast: false });
   const wG = new THREE.PlaneGeometry(5000, 5000); wG.rotateX(-Math.PI / 2); wG.translate(0, -3, 0);
   add(wG, std({ color: 0x2c3a3c, roughness: 0.2, metalness: 0.85, envMapIntensity: 1.0, normalMap: am.normal, normalScale: new THREE.Vector2(0.25, 0.25) }), { cast: false });
   for (let i = 0; i < TX.FACADE_COUNT; i++) {
@@ -298,9 +303,12 @@ export function buildCity(scene) {
   C.shop.forEach((b, i) => { if (b.pos.length) add(b.build(), std({ map: TX.shopfrontTexture(i), roughness: 0.5, metalness: 0.2 })); });
   const tp = (tone, rep) => { const t = TX.pavingTexture(tone); return t; };
   add(C.conc.build(0.2), std({ vertexColors: true, roughness: 0.62, metalness: 0.04 }));
-  const pv = (tone, rough) => { const t = tp(tone); return wetGround(std({ map: t.map, normalMap: t.normal, vertexColors: true, roughness: rough, envMapIntensity: 0.7 }), { pud: 0.64 }); };
-  add(C.pave.build(1 / 4.8), pv(0, 0.88), { cast: false });
-  add(C.plaza.build(1 / 6), pv(1, 0.7), { cast: false });
+  const pv = (tone, rough) => {
+    const ph = ASSETS.ok && tone < 2 ? ASSETS[tone === 1 ? 'plaza' : 'pavers'] : null, t = ph || tp(tone);
+    return wetGround(std({ map: t.map, normalMap: t.normal, roughnessMap: ph ? ph.arm : null, vertexColors: true, color: ph ? (tone === 1 ? 0xb9b6b0 : 0xd0d0d0) : 0xffffff, roughness: ph ? 1 : rough, envMapIntensity: 0.8 }), { pud: 0.66 });
+  };
+  add(C.pave.build(ASSETS.ok ? 1 / 2.4 : 1 / 4.8), pv(0, 0.88), { cast: false });
+  add(C.plaza.build(ASSETS.ok ? 1 / 3 : 1 / 6), pv(1, 0.7), { cast: false });
   add(C.wood.build(1 / 5), pv(2, 0.85), { cast: false });
   add(C.grass.build(1 / 7), std({ map: TX.grassTexture(), vertexColors: true, roughness: 0.95 }), { cast: false });
   add(C.marks.build(1), wetGround(std({ vertexColors: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), { pud: 0.55 }), { cast: false });

@@ -1,6 +1,7 @@
 // Boot: build the city, wire the systems together, run the frame loop.
 import * as THREE from 'three';
 import { createGfx } from './gfx/renderer.js';
+import { loadAssets } from './gfx/assets.js';
 import { buildCity } from './world/city.js';
 import { FX } from './fx/fx.js';
 import { Audio } from './audio.js';
@@ -17,7 +18,9 @@ const step = (pct, msg) => new Promise((r) => { $('boot-fill').style.width = pct
 
 async function boot() {
   const canvas = $('view'), ui = $('ui');
-  await step(8, '正在点亮天空');
+  await step(4, '正在载入实拍素材');
+  await loadAssets();
+  await step(10, '正在点亮天空');
   const gfx = createGfx(canvas);
   await step(25, '正在构筑陆家嘴');
   const world = buildCity(gfx.scene);

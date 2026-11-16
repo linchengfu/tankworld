@@ -4,10 +4,10 @@ import * as THREE from 'three';
 import { surf } from './geom.js';
 
 export const RUBBER = surf([0.022, 0.022, 0.024], 1), STEEL = surf(0.34, 2), GUNMETAL = surf(0.15, 2), BARE = surf(0.55, 2), GLASS = surf([0.04, 0.075, 0.1], 3);
-export const CANVAS = surf([0.17, 0.155, 0.105], 4), WOOD = surf([0.13, 0.085, 0.045], 4), LAMP = surf([0.3, 0.3, 0.27], 3), RED = surf([0.65, 0.05, 0.04], 4), AMBER = surf([0.9, 0.45, 0.05], 4), BLACK = surf(0.025, 4), OLIVE = surf([0.07, 0.08, 0.05], 4);
+export const CANVAS = surf([0.17, 0.155, 0.105], 4), WOOD = surf([0.13, 0.085, 0.045], 4), LAMP = surf([0.1, 0.1, 0.095], 3), RED = surf([0.65, 0.05, 0.04], 4), AMBER = surf([0.9, 0.45, 0.05], 4), BLACK = surf(0.025, 4), OLIVE = surf([0.07, 0.08, 0.05], 4);
 export const both = (fn) => { fn(1); fn(-1); };
 export const mirror = (half) => [...half, ...half.slice(1, -1).reverse().map(([x, y]) => [-x, y])];
-const _m = new THREE.Matrix4(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3(), _p = new THREE.Vector3();
+const _m = new THREE.Matrix4(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3(), _p = new THREE.Vector3(), _p2 = new THREE.Vector3();
 const lerpPoly = (pl, z) => { if (z <= pl[0][0]) return pl[0][1]; for (let i = 1; i < pl.length; i++) if (z <= pl[i][0]) { const a = pl[i - 1], b = pl[i], t = (z - a[0]) / Math.max(1e-6, b[0] - a[0]); return a[1] + (b[1] - a[1]) * t; } return pl[pl.length - 1][1]; };
 
 // ---------------------------------------------------------------- running gear
@@ -140,7 +140,7 @@ export function tiles(B, p0, u, v, nu, nv, thick, c, o = {}) {
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
     if (o.skip && o.skip(i, j)) continue;
     _p.set(...p0).addScaledVector(_x, (lu * (i + 0.5)) / nu).addScaledVector(_z, (lv * (j + 0.5)) / nv).addScaledVector(_y, thick / 2 + (o.lift || 0));
-    _m.makeBasis(_x, _y, _z).setPosition(_p); B.addGeometry(g, _m.clone(), typeof c === 'number' ? c - ((i * 7 + j * 3) % 3) * 0.03 : c);
+    _m.makeBasis(_x, _y, _p2.crossVectors(_x, _y)).setPosition(_p); B.addGeometry(g, _m.clone(), typeof c === 'number' ? c - ((i * 7 + j * 3) % 3) * 0.03 : c);   // third axis rebuilt so the frame stays right-handed when flipped
   }
   g.dispose();
 }

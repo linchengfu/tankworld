@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const dev = process.argv.includes('--dev');
 const res = await build({
   entryPoints: ['src/main.js'], bundle: true, format: 'iife', minify: !dev, write: false,
-  target: 'es2020', legalComments: 'none', loader: { '.glsl': 'text' },
+  target: 'es2020', legalComments: 'none', loader: { '.glsl': 'text', '.jpg': 'dataurl', '.hdr': 'dataurl' },
   define: { __DEV__: dev ? 'true' : 'false' },
 });
 const js = res.outputFiles[0].text.replace(/<\/script/g, '<\\/script');
