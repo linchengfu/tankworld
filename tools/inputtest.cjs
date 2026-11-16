@@ -1,0 +1,28 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const p = await b.newPage({ viewport: { width: 1000, height: 600 } });
+  const errs = []; p.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  await p.goto('file://' + process.cwd() + '/dist/index.html');
+  await p.waitForFunction(() => window.__dbg, null, { timeout: 180000 });
+  await p.evaluate(() => { __dbg.gfx.render = () => {}; });
+  await p.click('#btn-go');
+  const st = () => p.evaluate(() => { const g = __dbg.game, t = g.player; for (let i = 0; i < 150; i++) g.update(1 / 30); return { state: g.state, paused: g.paused, locked: __dbg.input.locked, yaw: +g.cam.yaw.toFixed(3), pitch: +g.cam.pitch.toFixed(3), x: +t.x.toFixed(1), z: +t.z.toFixed(1), heading: +t.heading.toFixed(2), turret: +t.turretYaw.toFixed(2), shots: t.stats.shots, loaded: t.loaded, sniper: g.cam.sniper, dist: +g.cam.distT.toFixed(1), reload: +t.reloadT.toFixed(1), speed: +t.speed.toFixed(1) }; });
+  console.log('start   ', JSON.stringify(await st()));
+  await p.mouse.move(500, 300); await p.mouse.move(650, 280, { steps: 5 });
+  console.log('mouse   ', JSON.stringify(await st()));
+  await p.keyboard.down('KeyW'); console.log('W       ', JSON.stringify(await st()));
+  await p.keyboard.down('KeyA'); console.log('W+A     ', JSON.stringify(await st())); await p.keyboard.up('KeyA'); await p.keyboard.up('KeyW');
+  await p.mouse.down(); await p.evaluate(() => { for (let i = 0; i < 3; i++) __dbg.game.update(1 / 30); }); await p.mouse.up(); console.log('fire    ', JSON.stringify(await st()));
+  await p.keyboard.press('Digit2'); console.log('shell 2 ', JSON.stringify(await st()));
+  await p.keyboard.press('ShiftLeft'); console.log('shift   ', JSON.stringify(await st()));
+  await p.mouse.wheel(0, 100); await p.mouse.wheel(0, 100); console.log('wheel-  ', JSON.stringify(await st()));
+  await p.keyboard.press('Escape'); await p.evaluate(() => __dbg.game.update(1 / 30));
+  console.log('esc     ', JSON.stringify(await p.evaluate(() => ({ paused: __dbg.game.paused, modal: document.getElementById('m-pause').classList.contains('on') }))));
+  await p.waitForTimeout(500); await p.click('#btn-resume'); console.log('resume  ', JSON.stringify(await p.evaluate(() => ({ paused: __dbg.game.paused, active: __dbg.input.active }))));
+  await p.keyboard.press('Escape'); await p.evaluate(() => __dbg.game.update(1 / 30)); await p.waitForTimeout(500); await p.click('#btn-quit');
+  console.log('quit    ', JSON.stringify(await p.evaluate(() => ({ state: __dbg.game.state, garage: document.getElementById('garage').classList.contains('on'), hud: document.getElementById('hud').classList.contains('on') }))));
+  await p.click('[data-id=t90m]'); await p.click('#btn-go'); console.log('restart ', JSON.stringify(await st()), await p.evaluate(() => __dbg.game.player.def.id));
+  console.log(errs.join('\n') || 'no errors');
+  await b.close();
+})();
