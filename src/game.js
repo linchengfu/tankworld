@@ -59,8 +59,8 @@ export class Game {
     const rg = new THREE.RingGeometry(this.world.cap.r - 0.5, this.world.cap.r + 0.15, 72); rg.rotateX(-Math.PI / 2);
     this.ring = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xf2b33d, transparent: true, opacity: 0.55, depthWrite: false })); this.ring.position.set(this.world.cap.x, 0.06, this.world.cap.z); this.scene.add(this.ring);
     const bg = new THREE.CylinderGeometry(this.world.cap.r, this.world.cap.r, 9, 72, 1, true);
-    this.beam = new THREE.Mesh(bg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: { uC: { value: new THREE.Color(0xf2b33d) } }, vertexShader: 'varying float vy; void main(){ vy = position.y / 9.0 + 0.5; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 uC; varying float vy; void main(){ float a = pow(1.0 - vy, 2.4) * 0.14; gl_FragColor = vec4(uC * a, 1.0); }' }));
-    this.beam.position.set(this.world.cap.x, 4.5, this.world.cap.z); this.scene.add(this.beam);
+    this.beam = new THREE.Mesh(bg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: { uC: { value: new THREE.Color(0xf2b33d) } }, vertexShader: 'varying float vy; void main(){ vy = position.y / 9.0 + 0.5; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 uC; varying float vy; void main(){ float a = pow(1.0 - vy, 3.0) * 0.06; gl_FragColor = vec4(uC * a, 1.0); }' }));
+    this.beam.position.set(this.world.cap.x, 4.5, this.world.cap.z); this.scene.add(this.beam); this.ring.userData.noAO = this.beam.userData.noAO = true;
   }
 
   // ---------------------------------------------------------------- garage

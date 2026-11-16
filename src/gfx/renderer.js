@@ -5,6 +5,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 
 export const SUN_DIR = new THREE.Vector3(-0.68, 0.7, 0.22).normalize(); // afternoon sun from the west, straight down Century Avenue
 const FOG = new THREE.Color(0.62, 0.55, 0.47);
@@ -42,6 +43,11 @@ const LensShader = {
     vec2 c = vUv - 0.5; float r = length(c * vec2(uAspect, 1.0));
     float ca = 0.0012 + uHit * 0.006;
     vec3 col = vec3(texture2D(tDiffuse, vUv + c*ca).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - c*ca).b);
+    // grade: a touch less saturation, cooler shadows, warmer highlights, gentle S-curve
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col = mix(vec3(l), col, 0.9);
+    col *= mix(vec3(0.95, 0.99, 1.06), vec3(1.04, 1.0, 0.95), smoothstep(0.15, 0.75, l));
+    col = mix(col, col * col * (3.0 - 2.0 * col), 0.22);
     col *= 1.0 - smoothstep(0.45, 1.05, r) * (0.42 + uScope * 0.35);
     col = mix(col, vec3(dot(col, vec3(0.3,0.59,0.11))) * vec3(1.0,0.92,0.85), uDead * 0.75);
     col = mix(col, col * vec3(1.25,0.55,0.45), uHit * smoothstep(0.2, 0.9, r));
@@ -59,7 +65,7 @@ export function createGfx(canvas) {
   const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 6000);
 
   const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.ShaderMaterial({ vertexShader: skyVert, fragmentShader: skyFrag, uniforms: { uSun: { value: SUN_DIR }, uFog: { value: FOG } }, side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false }));
-  sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
+  sky.frustumCulled = false; sky.renderOrder = -10; sky.userData.noAO = true; scene.add(sky);
   // reflections come from the same sky
   const pm = new THREE.PMREMGenerator(renderer), envScene = new THREE.Scene(); envScene.add(sky.clone());
   const env = pm.fromScene(envScene, 0, 0.1, 100).texture; scene.environment = env; scene.environmentIntensity = 0.85; pm.dispose();
@@ -72,7 +78,12 @@ export function createGfx(canvas) {
 
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
   const renderPass = new RenderPass(scene, camera), bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.7, 1.05), lens = new ShaderPass(LensShader);
-  composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(lens);
+  // ground-truth ambient occlusion on the high setting: grounds vehicles, street furniture and building bases
+  const ao = new GTAOPass(scene, camera, 256, 256, undefined, { radius: 1.1, distanceExponent: 1.4, thickness: 1.4, scale: 1.25, samples: 8, distanceFallOff: 1, screenSpaceRadius: false }, { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 8, radiusExponent: 2, rings: 2, samples: 8 });
+  ao.blendIntensity = 0.85;
+  const ov = ao._overrideVisibility.bind(ao);
+  ao._overrideVisibility = function () { ov(); const cache = this._visibilityCache; this.scene.traverse((o) => { if (o.userData.noAO && o.visible) { o.visible = false; cache.push(o); } }); };
+  composer.addPass(renderPass); composer.addPass(ao); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(lens);
 
   const gfx = {
     renderer, scene, camera, sun, composer, lens: lens.uniforms, quality: 'high', usePost: true, time: 0,
@@ -80,7 +91,7 @@ export function createGfx(canvas) {
       this.quality = q;
       const dpr = Math.min(window.devicePixelRatio || 1, q === 'high' ? 2 : q === 'mid' ? 1.4 : 1);
       renderer.setPixelRatio(dpr); composer.setPixelRatio(dpr);
-      this.usePost = q !== 'low'; bloom.enabled = q !== 'low';
+      this.usePost = q !== 'low'; bloom.enabled = q !== 'low'; ao.enabled = q === 'high';
       renderer.shadowMap.enabled = true; sun.castShadow = q !== 'low';
       sun.shadow.mapSize.set(q === 'high' ? 4096 : 2048, q === 'high' ? 4096 : 2048); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
       this.resize();
@@ -89,6 +100,14 @@ export function createGfx(canvas) {
       const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
       renderer.setSize(w, h, false); composer.setSize(w, h);
       camera.aspect = w / h; camera.updateProjectionMatrix(); this.lens.uAspect.value = w / h;
+    },
+    // Re-light reflections from inside the city: one cube capture from street level replaces the bare-sky environment,
+    // so glass towers mirror their neighbours and armour picks up the street.
+    captureEnv(x, y, z) {
+      const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cc = new THREE.CubeCamera(0.5, 5000, rt);
+      cc.position.set(x, y, z); sky.position.set(x, y, z); sky.scale.setScalar(3000); sky.updateMatrixWorld();
+      const sh = renderer.shadowMap.autoUpdate; this.focus(x, z); cc.update(renderer, scene); renderer.shadowMap.autoUpdate = sh;
+      const pg = new THREE.PMREMGenerator(renderer); scene.environment = pg.fromCubemap(rt.texture).texture; pg.dispose(); rt.dispose();
     },
     // keep the shadow box around the action (snapped so it does not crawl)
     focus(x, z) {

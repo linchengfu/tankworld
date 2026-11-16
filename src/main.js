@@ -10,9 +10,9 @@ import { Menu } from './ui/menu.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const settings = { tank: 'ztz99a', diff: 'normal', size: 5, quality: 'mid', sens: 1, vol: 0.8 };
-try { Object.assign(settings, JSON.parse(localStorage.getItem('pudong-armor') || '{}')); } catch (e) { /* storage is optional */ }
-const save = () => { try { localStorage.setItem('pudong-armor', JSON.stringify(settings)); } catch (e) { /* ignore */ } };
+const settings = { tank: 'ztz99a', diff: 'normal', size: 5, quality: 'high', sens: 1, vol: 0.8 };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('pudong-armor-2') || '{}')); } catch (e) { /* storage is optional */ }
+const save = () => { try { localStorage.setItem('pudong-armor-2', JSON.stringify(settings)); } catch (e) { /* ignore */ } };
 const step = (pct, msg) => new Promise((r) => { $('boot-fill').style.width = pct + '%'; if (msg) $('boot-msg').textContent = msg; requestAnimationFrame(() => setTimeout(r, 0)); });
 
 async function boot() {
@@ -21,6 +21,8 @@ async function boot() {
   const gfx = createGfx(canvas);
   await step(25, '正在构筑陆家嘴');
   const world = buildCity(gfx.scene);
+  await step(60, '正在采集街景反射');
+  gfx.setQuality(settings.quality); gfx.captureEnv(-8, 9, 6);
   await step(70, '正在调校火控');
   const fx = new FX(gfx.scene), audio = new Audio(), input = new Input(canvas), hud = new Hud(ui);
   input.bindTouch();

@@ -31,7 +31,7 @@ class Layer {
     for (const b of [this.bPos, this.bData, this.bCol]) b.setUsage(THREE.DynamicDrawUsage);
     g.setAttribute('iPos', this.bPos); g.setAttribute('iData', this.bData); g.setAttribute('iCol', this.bCol);
     const mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: additive ? FRAG_B : FRAG_A, uniforms: { uMap: { value: atlas }, uFogC: { value: fog.color }, uFogD: { value: fog.density } }, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending });
-    this.mesh = new THREE.Mesh(g, mat); this.mesh.frustumCulled = false; this.mesh.renderOrder = additive ? 6 : 5; this.geo = g; scene.add(this.mesh);
+    this.mesh = new THREE.Mesh(g, mat); this.mesh.frustumCulled = false; this.mesh.userData.noAO = true; this.mesh.renderOrder = additive ? 6 : 5; this.geo = g; scene.add(this.mesh);
   }
   spawn(x, y, z, vx, vy, vz, life, s0, s1, frame, r, g, b, a, drag = 1, grav = 0, fadeIn = 0.08) {
     let i = this.n; if (i >= this.max) i = (Math.random() * this.max) | 0; else this.n++;

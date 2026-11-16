@@ -79,7 +79,7 @@ const T = [];
 T.push({
   id: 'ztz99a', name: 'ZTZ-99A', cn: '99A式主战坦克', nation: 'cn', nationName: '中国',
   blurb: '解放军陆军的拳头装备。125毫米高膛压滑膛炮配自动装弹机，楔形附加装甲与激光压制系统，1500马力让它在同级中机动性拔尖。',
-  mass: 55, hp: 1500, vmax: 80, vrev: 36, hullTurn: 38, turretTurn: 36, elevRate: 20, depr: 5, elev: 15,
+  mass: 55, hp: 1500, vmax: 80, vrev: 36, hullTurn: 38, turretTurn: 36, elevRate: 20, depr: 6, elev: 14,
   reload: 7.0, autoloader: true, crewN: 3, layout: 'carousel', aimTime: 1.9, disp: 1.15,
   gunName: 'ZPT-98 125毫米滑膛炮',
   shells: [
@@ -87,12 +87,12 @@ T.push({
     { type: 'heat', name: 'DTP-125', v: 1000, pen: 480 },
     { type: 'he', name: 'DTB-125', v: 850, pen: 42 },
   ],
-  ammo: [22, 10, 8],
+  ammo: [22, 12, 8],
   armor: { ufp: [800, 1000], lfp: [300, 370], hside: [70, 220], hrear: [40, 40], htop: [35, 35], hbot: [25, 25], tfront: [820, 1150], mant: [400, 480], tside: [280, 450], trear: [50, 50], ttop: [40, 40] },
   geo: {
     L: 7.6, W: 3.5, hullH: 1.18, belly: 0.45, glacisLen: 1.45, noseY: 0.8, lfpLen: 0.6, trackW: 0.6, trackH: 0.98, wheels: 6, wheelR: 0.33,
     turret: { z: 0.35, h: 0.82, prof: [[2.15, 0.36], [1.2, 1.28], [-0.3, 1.48], [-1.9, 1.34], [-2.35, 1.05]], taper: [0.9, 0.86] },
-    gun: { z: 1.5, y: 0.42, len: 6.6, r: 0.088, evac: 0.46 }, mant: [0.42, 0.34],
+    gun: { z: 1.5, y: 0.42, len: 6.6, r: 0.088, evac: 0.46, style: 'east' }, mant: [0.42, 0.34],
   },
   camo: { type: 'digital', colors: ['#6b6f4a', '#3c4a33', '#a89a72', '#3a3128'] },
 });
@@ -100,7 +100,7 @@ T.push({
 T.push({
   id: 't14', name: 'T-14 Armata', cn: 'T-14“阿玛塔”', nation: 'ru', nationName: '俄罗斯',
   blurb: '无人炮塔设计：三名乘员全部坐在车体前部的装甲隔离舱内。炮塔正面装甲薄弱，但打穿它伤不到人——想击毁它，瞄准车体。',
-  mass: 55, hp: 1500, vmax: 75, vrev: 40, hullTurn: 38, turretTurn: 40, elevRate: 22, depr: 6, elev: 16,
+  mass: 55, hp: 1500, vmax: 80, vrev: 40, hullTurn: 38, turretTurn: 40, elevRate: 22, depr: 6, elev: 16,
   reload: 6.2, autoloader: true, crewN: 3, layout: 'capsule', aimTime: 1.7, disp: 1.05,
   gunName: '2A82-1M 125毫米滑膛炮',
   shells: [
@@ -108,7 +108,7 @@ T.push({
     { type: 'heat', name: '3BK31', v: 1000, pen: 550 },
     { type: 'he', name: '3OF82', v: 850, pen: 42 },
   ],
-  ammo: [22, 10, 8],
+  ammo: [24, 12, 9],
   armor: { ufp: [900, 1200], lfp: [360, 480], hside: [90, 380], hrear: [45, 45], htop: [40, 60], hbot: [30, 30], tfront: [260, 380], mant: [200, 250], tside: [90, 200], trear: [40, 60], ttop: [30, 30] },
   geo: {
     L: 8.7, W: 3.5, hullH: 1.25, belly: 0.45, glacisLen: 2.3, noseY: 0.85, lfpLen: 0.7, trackW: 0.6, trackH: 1.0, wheels: 7, wheelR: 0.33,
@@ -120,8 +120,8 @@ T.push({
 
 T.push({
   id: 't90m', name: 'T-90M 突破', cn: 'T-90M“突破”', nation: 'ru', nationName: '俄罗斯',
-  blurb: '车身低矮、正面披挂“遗迹”反应装甲。倒车极慢，转盘式弹药架就在乘员脚下——一旦被从侧面打穿，炮塔很可能直接飞天。',
-  mass: 48, hp: 1130, vmax: 65, vrev: 9, hullTurn: 36, turretTurn: 38, elevRate: 20, depr: 5, elev: 14,
+  blurb: '车身低矮、正面披挂“遗迹”反应装甲。倒车只有每小时 5 公里，转盘式弹药架就在乘员脚下——一旦被从侧面打穿，炮塔很可能直接飞天。',
+  mass: 48, hp: 1130, vmax: 60, vrev: 5, hullTurn: 36, turretTurn: 38, elevRate: 20, depr: 5, elev: 14,
   reload: 7.0, autoloader: true, crewN: 3, layout: 'carousel', aimTime: 1.9, disp: 1.15,
   gunName: '2A46M-5 125毫米滑膛炮',
   shells: [
@@ -129,12 +129,12 @@ T.push({
     { type: 'heat', name: '3BK31', v: 1000, pen: 550 },
     { type: 'he', name: '3OF26', v: 850, pen: 42 },
   ],
-  ammo: [22, 10, 8],
+  ammo: [22, 12, 9],
   armor: { ufp: [800, 1100], lfp: [280, 340], hside: [70, 300], hrear: [40, 40], htop: [35, 35], hbot: [25, 25], tfront: [800, 1150], mant: [360, 430], tside: [250, 450], trear: [45, 80], ttop: [40, 40] },
   geo: {
-    L: 6.9, W: 3.6, hullH: 1.1, belly: 0.45, glacisLen: 1.0, noseY: 0.7, lfpLen: 0.55, trackW: 0.6, trackH: 0.95, wheels: 6, wheelR: 0.33,
+    L: 6.86, W: 3.78, hullH: 1.1, belly: 0.45, glacisLen: 1.0, noseY: 0.7, lfpLen: 0.55, trackW: 0.6, trackH: 0.95, wheels: 6, wheelR: 0.33,
     turret: { z: 0.5, h: 0.78, prof: [[1.75, 0.45], [1.25, 1.2], [0.2, 1.5], [-1.0, 1.42], [-1.6, 1.15], [-2.3, 0.95]], taper: [0.88, 0.82] },
-    gun: { z: 1.2, y: 0.4, len: 6.2, r: 0.088, evac: 0.48 }, mant: [0.45, 0.33], bustleAmmo: true,
+    gun: { z: 1.2, y: 0.4, len: 6.2, r: 0.088, evac: 0.48, style: 'east' }, mant: [0.45, 0.33], bustleAmmo: true, spokes: 6,
   },
   camo: { type: 'blotch', colors: ['#4f5a3c', '#3a4530', '#6b6a48', '#2a2f22'] },
 });
@@ -142,7 +142,7 @@ T.push({
 T.push({
   id: 'm1a2', name: 'M1A2 SEPv3', cn: 'M1A2 SEPv3“艾布拉姆斯”', nation: 'us', nationName: '美国',
   blurb: '贫铀装甲炮塔正面几乎无解，弹药全部存放在带泄压板的尾舱内，殉爆也未必致命。燃气轮机加速迅猛，倒车很快。',
-  mass: 66.8, hp: 1500, vmax: 68, vrev: 40, hullTurn: 36, turretTurn: 40, elevRate: 24, depr: 10, elev: 20,
+  mass: 66.8, hp: 1500, vmax: 67, vrev: 40, hullTurn: 36, turretTurn: 40, elevRate: 24, depr: 10, elev: 20,
   reload: 6.0, autoloader: false, crewN: 4, layout: 'west4', aimTime: 1.6, disp: 1.0, turbine: true,
   gunName: 'M256 120毫米滑膛炮',
   shells: [
@@ -163,7 +163,7 @@ T.push({
 T.push({
   id: 'leo2a7', name: 'Leopard 2A7V', cn: '“豹”2A7V', nation: 'de', nationName: '德国',
   blurb: '西欧主战坦克的标杆。L/55A1 长身管火炮穿深出色，箭簇形楔形装甲保护炮塔正面，但车体左前方的弹药架是出了名的弱点。',
-  mass: 66.5, hp: 1500, vmax: 68, vrev: 31, hullTurn: 40, turretTurn: 40, elevRate: 24, depr: 9, elev: 20,
+  mass: 66.5, hp: 1500, vmax: 63, vrev: 31, hullTurn: 40, turretTurn: 40, elevRate: 24, depr: 9, elev: 20,
   reload: 6.0, autoloader: false, crewN: 4, layout: 'west4', aimTime: 1.6, disp: 0.95,
   gunName: 'Rh-120 L/55A1 120毫米滑膛炮',
   shells: [
@@ -171,20 +171,20 @@ T.push({
     { type: 'heat', name: 'DM12A1', v: 1140, pen: 480 },
     { type: 'he', name: 'DM11', v: 1100, pen: 40 },
   ],
-  ammo: [22, 10, 8],
+  ammo: [24, 10, 8],
   armor: { ufp: [770, 900], lfp: [340, 420], hside: [75, 240], hrear: [35, 35], htop: [40, 40], hbot: [25, 25], tfront: [880, 1300], mant: [520, 680], tside: [260, 420], trear: [40, 60], ttop: [45, 45] },
   geo: {
     L: 7.72, W: 3.74, hullH: 1.22, belly: 0.45, glacisLen: 1.9, noseY: 0.85, lfpLen: 0.65, trackW: 0.63, trackH: 1.0, wheels: 7, wheelR: 0.33,
     turret: { z: 0.25, h: 0.86, prof: [[2.5, 0.4], [1.05, 1.55], [-0.4, 1.75], [-2.2, 1.65], [-2.6, 1.3]], taper: [0.92, 0.9] },
-    gun: { z: 1.55, y: 0.45, len: 7.0, r: 0.085, evac: 0.42 }, mant: [0.42, 0.36], driverX: -0.45, hullAmmo: [0.5, 0],
+    gun: { z: 1.55, y: 0.45, len: 7.0, r: 0.085, evac: 0.42, style: 'wedge' }, mant: [0.42, 0.36], driverX: -0.45, hullAmmo: [0.5, 0],
   },
   camo: { type: 'nato3', colors: ['#4d5a3d', '#57432f', '#1f211d', '#4d5a3d'] },
 });
 
 T.push({
   id: 'cr3', name: 'Challenger 3', cn: '“挑战者”3', nation: 'gb', nationName: '英国',
-  blurb: '英国陆军的新一代主战坦克，换装德制 120 毫米滑膛炮与新型模块化装甲。皮糙肉厚、炮塔坚固，代价是偏慢的机动。',
-  mass: 66, hp: 1500, vmax: 60, vrev: 30, hullTurn: 30, turretTurn: 36, elevRate: 22, depr: 10, elev: 20,
+  blurb: '英国陆军的新一代主战坦克，换装德制 120 毫米滑膛炮与新型模块化装甲。皮糙肉厚、炮塔坚固，但 1200 马力拖着 66 吨，是全场最慢的一辆，备弹也只有 31 发。',
+  mass: 66, hp: 1200, vmax: 59, vrev: 30, hullTurn: 30, turretTurn: 36, elevRate: 22, depr: 10, elev: 20,
   reload: 6.5, autoloader: false, crewN: 4, layout: 'west4', aimTime: 1.7, disp: 0.95,
   gunName: 'Rh-120 L/55A1 120毫米滑膛炮',
   shells: [
@@ -192,7 +192,7 @@ T.push({
     { type: 'heat', name: 'DM12A1', v: 1140, pen: 480 },
     { type: 'he', name: 'DM11', v: 1100, pen: 40 },
   ],
-  ammo: [22, 10, 8],
+  ammo: [18, 7, 6],
   armor: { ufp: [800, 1050], lfp: [300, 480], hside: [80, 380], hrear: [40, 40], htop: [40, 40], hbot: [25, 25], tfront: [920, 1350], mant: [380, 500], tside: [320, 520], trear: [45, 60], ttop: [45, 45] },
   geo: {
     L: 8.3, W: 3.5, hullH: 1.25, belly: 0.45, glacisLen: 1.7, noseY: 0.9, lfpLen: 0.7, trackW: 0.6, trackH: 1.0, wheels: 6, wheelR: 0.35,
@@ -205,7 +205,7 @@ T.push({
 T.push({
   id: 'leclerc', name: 'Leclerc XLR', cn: '“勒克莱尔”XLR', nation: 'fr', nationName: '法国',
   blurb: '尾舱式自动装弹机让它拥有全场最快的射速，车体轻、功重比高。装甲在同代里偏薄，适合打了就跑的巷战节奏。',
-  mass: 57, hp: 1500, vmax: 72, vrev: 38, hullTurn: 42, turretTurn: 40, elevRate: 24, depr: 8, elev: 15,
+  mass: 57.4, hp: 1500, vmax: 71, vrev: 38, hullTurn: 42, turretTurn: 40, elevRate: 24, depr: 8, elev: 15,
   reload: 5.0, autoloader: true, crewN: 3, layout: 'leclerc', aimTime: 1.6, disp: 1.0,
   gunName: 'CN120-26 120毫米滑膛炮',
   shells: [
@@ -216,7 +216,7 @@ T.push({
   ammo: [22, 10, 8],
   armor: { ufp: [720, 880], lfp: [300, 400], hside: [70, 300], hrear: [35, 35], htop: [35, 35], hbot: [25, 25], tfront: [720, 950], mant: [340, 430], tside: [240, 400], trear: [40, 50], ttop: [35, 35] },
   geo: {
-    L: 6.88, W: 3.6, hullH: 1.15, belly: 0.45, glacisLen: 1.5, noseY: 0.8, lfpLen: 0.6, trackW: 0.6, trackH: 0.97, wheels: 6, wheelR: 0.33,
+    L: 6.88, W: 3.71, hullH: 1.15, belly: 0.45, glacisLen: 1.5, noseY: 0.8, lfpLen: 0.6, trackW: 0.6, trackH: 0.97, wheels: 6, wheelR: 0.33,
     turret: { z: 0.1, h: 0.8, prof: [[2.1, 0.55], [1.5, 1.35], [-0.8, 1.55], [-2.6, 1.5], [-3.0, 1.2]], taper: [0.93, 0.9] },
     gun: { z: 1.5, y: 0.42, len: 6.6, r: 0.085, evac: 0 }, mant: [0.5, 0.34],
   },

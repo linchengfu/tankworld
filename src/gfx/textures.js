@@ -82,17 +82,16 @@ export function trackTexture() {
 }
 
 // ---------------------------------------------------------------- ground
-export function asphaltTexture() {
-  const n1 = makeNoise(3), n2 = makeNoise(5), n3 = makeNoise(9);
-  const [c, g] = pixels(512, (u, v) => {
-    const a = n1(u, v, 6, 5), b = n2(u, v, 64, 2), p = n3(u, v, 3, 2);
-    let k = 46 + a * 22 + (b - 0.5) * 22 + (p > 0.6 ? -7 : 0);
-    return [k * 1.0, k * 1.0, k * 1.04];
-  });
+export function asphaltMaps() {
+  const n1 = makeNoise(3), n2 = makeNoise(5), n3 = makeNoise(9), n4 = makeNoise(13), S = 512;
+  const [c, g] = pixels(S, (u, v) => { const big = n3(u, v, 3, 3), agg = n1(u, v, 32, 2), fine = n2(u, v, 64, 1), k = 64 + (big - 0.5) * 16 + (agg - 0.5) * 20 + (fine > 0.7 ? 14 : fine < 0.25 ? -9 : 0); return [k * 1.02, k, k * 0.98]; });
+  const [hc, hg] = pixels(S, (u, v) => { const k = 128 + (n1(u, v, 32, 2) - 0.5) * 150 + (n2(u, v, 64, 1) - 0.5) * 90; return [k, k, k]; });
+  const [rc] = pixels(S, (u, v) => { const oil = n4(u, v, 4, 3), r = oil > 0.66 ? 150 : 222 + (n2(u, v, 64, 1) - 0.5) * 40; return [0, r, 0]; });
   const r = makeRng(77);
-  g.strokeStyle = 'rgba(12,12,13,.55)'; g.lineWidth = 1.2;
-  for (let i = 0; i < 9; i++) { let x = r() * 512, y = r() * 512; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 9; k++) { x += r.range(-26, 26); y += r.range(-26, 26); g.lineTo(x, y); } g.stroke(); }
-  return tex(c);
+  for (const [ctx, col, lw] of [[g, 'rgba(14,14,14,.7)', 1.1], [hg, 'rgb(20,20,20)', 1.6]]) { ctx.strokeStyle = col; ctx.lineWidth = lw; const rr = makeRng(77); for (let i = 0; i < 7; i++) { let x = rr() * S, y = rr() * S; ctx.beginPath(); ctx.moveTo(x, y); for (let k = 0; k < 14; k++) { x += rr.range(-22, 22); y += rr.range(-22, 22); ctx.lineTo(x, y); } ctx.stroke(); } }
+  // tar-sealed repair seams
+  g.strokeStyle = 'rgba(8,8,9,.55)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 180 + r() * 40); g.bezierCurveTo(160, 150, 340, 230, S, 190); g.stroke();
+  return { map: tex(c), normal: normalFromHeight(hc, 1.3), rough: tex(rc, { linear: true }) };
 }
 export function pavingTexture(tone = 0) {
   const n1 = makeNoise(21 + tone), r = makeRng(5 + tone), [c, g] = canvas(512, 512), base = tone === 1 ? [168, 160, 148] : tone === 2 ? [128, 108, 92] : [132, 132, 130], T = tone === 1 ? 4 : 8, s = 512 / T;
@@ -104,7 +103,11 @@ export function pavingTexture(tone = 0) {
   const img = g.getImageData(0, 0, 512, 512), d = img.data;
   for (let i = 0; i < d.length; i += 4) { const x = (i / 4) % 512, y = (i / 4 / 512) | 0, m = 0.8 + n1(x / 512, y / 512, 8, 4) * 0.4; d[i] *= m; d[i + 1] *= m; d[i + 2] *= m; }
   g.putImageData(img, 0, 0);
-  return tex(c);
+  // relief: slabs proud of the joints, a little surface grain
+  const [hc, hg] = canvas(512, 512); hg.fillStyle = '#404040'; hg.fillRect(0, 0, 512, 512); hg.fillStyle = '#b0b0b0';
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const off = tone === 2 && y % 2 ? s / 2 : 0; hg.fillRect(x * s + off + 1, y * s + 1, s - 4, s - 4); if (off) hg.fillRect(x * s + off - 511, y * s + 1, s - 4, s - 4); }
+  const hi = hg.getImageData(0, 0, 512, 512), hd = hi.data; for (let i = 0; i < hd.length; i += 4) { const x = (i / 4) % 512, y = (i / 4 / 512) | 0, k = hd[i] + (n1(x / 512, y / 512, 64, 1) - 0.5) * 50; hd[i] = hd[i + 1] = hd[i + 2] = k; } hg.putImageData(hi, 0, 0);
+  return { map: tex(c), normal: normalFromHeight(hc, 1.4) };
 }
 export function grassTexture() {
   const n1 = makeNoise(31), n2 = makeNoise(37);
@@ -127,6 +130,7 @@ const FACADES = [
 export const FACADE_COUNT = FACADES.length;
 export function facadeTextures(i) {
   const f = FACADES[i], S = 512, r = makeRng(100 + i), [c, g] = canvas(S, S), [c2, g2] = canvas(S, S), [c3, g3] = canvas(S, S);
+  const [c4, g4] = canvas(S, S); g4.fillStyle = 'rgb(205,205,205)'; g4.fillRect(0, 0, S, S);
   const bw = S / f.bays, fh = S / f.floors, rgb = (k, m = 1) => `rgb(${k[0] * m | 0},${k[1] * m | 0},${k[2] * m | 0})`;
   g.fillStyle = rgb(f.mull); g.fillRect(0, 0, S, S);
   g2.fillStyle = 'rgb(0,170,20)'; g2.fillRect(0, 0, S, S); // frame: rough, slightly metallic
@@ -140,10 +144,12 @@ export function facadeTextures(i) {
     const gr = g.createLinearGradient(0, gy, 0, gy + gh); gr.addColorStop(0, rgb(f.glass, m * 1.18)); gr.addColorStop(1, rgb(f.glass, m * 0.8));
     g.fillStyle = gr; g.fillRect(gx, gy, gw, gh);
     g2.fillStyle = `rgb(0,${r.int(22, 46)},${f.name === 'stone' ? 150 : 235})`; g2.fillRect(gx, gy, gw, gh); // glass: smooth + metallic → mirrors the sky
+    // no two panes of a curtain wall are quite coplanar: give each a slight tilt so reflections break up pane by pane
+    { const tl = r.range(-13, 13), hz = r.chance(0.5), gr4 = hz ? g4.createLinearGradient(gx, 0, gx + gw, 0) : g4.createLinearGradient(0, gy, 0, gy + gh); gr4.addColorStop(0, `rgb(${96 + tl},${96 + tl},${96 + tl})`); gr4.addColorStop(1, `rgb(${96 - tl},${96 - tl},${96 - tl})`); g4.fillStyle = gr4; g4.fillRect(gx, gy, gw, gh); g4.fillStyle = 'rgb(160,160,160)'; g4.fillRect(x + (f.punch ? 0 : mw / 2), y, bw - (f.punch ? 0 : mw), bh); }
     if (r.chance(0.07)) { g3.fillStyle = r.chance(0.7) ? 'rgb(255,214,150)' : 'rgb(210,230,255)'; g3.globalAlpha = r.range(0.35, 0.9); g3.fillRect(gx + 1, gy + 1, gw - 2, gh - 2); g3.globalAlpha = 1; }
     if (r.chance(0.12)) { g.fillStyle = 'rgba(230,230,220,.16)'; g.fillRect(gx, gy, gw, gh * r.range(0.2, 0.7)); } // blinds
   }
-  return { map: tex(c), rm: tex(c2, { linear: true }), em: tex(c3) };
+  return { map: tex(c), rm: tex(c2, { linear: true }), em: tex(c3), nm: normalFromHeight(c4, 11) };
 }
 
 const SHOPS = [
@@ -220,4 +226,72 @@ export function radialTexture(stops) {
   for (const [o, col] of stops) gr.addColorStop(o, col);
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
   return tex(c, { clamp: true });
+}
+
+// ---------------------------------------------------------------- relief: height canvas → tangent-space normal map
+export function normalFromHeight(src, strength = 2, wrap = true) {
+  const w = src.width, h = src.height, sd = src.getContext('2d').getImageData(0, 0, w, h).data, [c, g] = canvas(w, h), img = g.createImageData(w, h), d = img.data;
+  const H = (x, y) => { if (wrap) { x = (x + w) % w; y = (y + h) % h; } else { x = x < 0 ? 0 : x >= w ? w - 1 : x; y = y < 0 ? 0 : y >= h ? h - 1 : y; } return sd[(y * w + x) * 4] / 255; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = (H(x + 1, y) - H(x - 1, y)) * strength, dy = (H(x, y + 1) - H(x, y - 1)) * strength, l = Math.hypot(dx, dy, 1), i = (y * w + x) * 4;
+    d[i] = (-dx / l * 0.5 + 0.5) * 255; d[i + 1] = (dy / l * 0.5 + 0.5) * 255; d[i + 2] = (1 / l * 0.5 + 0.5) * 255; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return tex(c, { linear: true, clamp: !wrap });
+}
+function grey(size, fn) { return pixels(size, (u, v, x, y) => { const k = Math.max(0, Math.min(255, fn(u, v, x, y) * 255)); return [k, k, k]; })[0]; }
+
+// Painted armour plate: fine anti-slip grain over a slow undulation. Returns { normal, rough }.
+let _armor;
+export function armorDetail() {
+  if (_armor) return _armor;
+  const n1 = makeNoise(201), n2 = makeNoise(207), n3 = makeNoise(211);
+  const hc = grey(256, (u, v) => 0.5 + (n1(u, v, 64, 2) - 0.5) * 0.5 + (n2(u, v, 6, 3) - 0.5) * 0.35);
+  const rc = pixels(256, (u, v) => { const a = n3(u, v, 5, 4), b = n1(u, v, 48, 2), r = 150 + a * 70 + (b - 0.5) * 40; return [0, r, 0]; })[0];
+  return (_armor = { normal: normalFromHeight(hc, 1.6), rough: tex(rc, { linear: true }) });
+}
+
+// Track run seen from outside: one link pitch per tile. style 'pad' (rubber pads, NATO) or 'bar' (steel grousers).
+const _trk = {};
+export function trackMaps(style) {
+  if (_trk[style]) return _trk[style];
+  const S = 128, [c, g] = canvas(S, S), [hc, hg] = canvas(S, S), n = makeNoise(77);
+  g.fillStyle = '#1b1a18'; g.fillRect(0, 0, S, S); hg.fillStyle = '#202020'; hg.fillRect(0, 0, S, S);
+  const rect = (x, y, w, h, col, hh) => { g.fillStyle = col; g.fillRect(x, y, w, h); hg.fillStyle = `rgb(${hh},${hh},${hh})`; hg.fillRect(x, y, w, h); };
+  for (let k = 0; k < 2; k++) {
+    const y = k * 64;
+    rect(2, y + 4, 124, 56, '#35322e', 110);                       // link body
+    if (style === 'pad') { rect(8, y + 12, 46, 40, '#141413', 200); rect(74, y + 12, 46, 40, '#141413', 200); }
+    else { rect(6, y + 10, 116, 12, '#4a443c', 220); rect(6, y + 40, 116, 12, '#4a443c', 220); }
+    rect(58, y + 6, 12, 52, '#2a2724', 60);                        // centre guide slot
+    rect(0, y + 22, 6, 18, '#58524a', 235); rect(122, y + 22, 6, 18, '#58524a', 235); // end connectors
+  }
+  const img = g.getImageData(0, 0, S, S), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const x = (i / 4) % S, y = (i / 4 / S) | 0, m = 0.7 + n(x / S, y / S, 16, 3) * 0.6, dust = n(x / S, y / S, 4, 2) * 26; d[i] = d[i] * m + dust * 1.1; d[i + 1] = d[i + 1] * m + dust; d[i + 2] = d[i + 2] * m + dust * 0.8; }
+  g.putImageData(img, 0, 0);
+  return (_trk[style] = { map: tex(c, { aniso: 4 }), normal: normalFromHeight(hc, 3) });
+}
+
+// A clump of leaves on a transparent ground, for foliage cards.
+let _leaf;
+export function leafTexture() {
+  if (_leaf) return _leaf;
+  const S = 256, [c, g] = canvas(S, S), r = makeRng(404);
+  for (let i = 0; i < 520; i++) {
+    const a = r() * 6.283, rad = Math.pow(r(), 0.65) * 112, x = 128 + Math.cos(a) * rad, y = 128 + Math.sin(a) * rad * 0.92, depth = r();
+    const k = 0.45 + depth * 0.75, lit = y < 128 ? 1.12 : 0.86;
+    const warm = r() < 0.25 ? 26 : 0; g.fillStyle = `rgb(${(66 + warm + r() * 34) * k * lit | 0},${(98 + r() * 44) * k * lit | 0},${(40 + r() * 20) * k | 0})`;
+    g.save(); g.translate(x, y); g.rotate(r() * 6.283); g.beginPath(); g.ellipse(0, 0, 5 + r() * 7, 2.5 + r() * 3.5, 0, 0, 6.283); g.fill(); g.restore();
+  }
+  const t = tex(c, { clamp: true, aniso: 4 }); t.premultiplyAlpha = false; return (_leaf = t);
+}
+
+// Soft contact shadow painted under a vehicle.
+let _blob;
+export function blobShadow() {
+  if (_blob) return _blob;
+  const [c, g] = canvas(128, 256), img = g.createImageData(128, 256), d = img.data;
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 128; x++) { const u = Math.abs(x / 127 - 0.5) * 2, v = Math.abs(y / 255 - 0.5) * 2, e = Math.max(0, 1 - Math.max(Math.pow(u, 5), Math.pow(v, 7))), i = (y * 128 + x) * 4; d[i + 3] = Math.pow(e, 1.4) * 215; }
+  g.putImageData(img, 0, 0);
+  return (_blob = tex(c, { clamp: true }));
 }

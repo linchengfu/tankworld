@@ -51,6 +51,44 @@ export class GeoBuilder {
     this.poly(bot, c, ctr); this.poly(top, c, ctr);
     return this;
   }
+  // Transform every vertex added since `from` (a value returned by mark()).
+  mark() { return this.pos.length / 3; }
+  xform(from, m) {
+    const nm = new THREE.Matrix3().getNormalMatrix(m), P = this.pos, N = this.nor;
+    for (let i = from * 3; i < P.length; i += 3) { _v.set(P[i], P[i + 1], P[i + 2]).applyMatrix4(m); P[i] = _v.x; P[i + 1] = _v.y; P[i + 2] = _v.z; _n.set(N[i], N[i + 1], N[i + 2]).applyMatrix3(nm).normalize(); N[i] = _n.x; N[i + 1] = _n.y; N[i + 2] = _n.z; }
+    return this;
+  }
+  // Triangle fan around a point; `away` is a point the fan must face away from.
+  fan(ctr, ring, c, away) {
+    const k = col3(c);
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length]; if (a.distanceToSquared(b) < 1e-10) continue;
+      _a.subVectors(a, ctr); _b.subVectors(b, ctr); _c.crossVectors(_a, _b); if (_c.lengthSq() < 1e-12) continue;
+      if (_c.dot(_a.subVectors(ctr, away)) < 0) this.tri(ctr, b, a, k); else this.tri(ctr, a, b, k);
+    }
+    return this;
+  }
+  // Skin through cross-sections: secs = [{ z, pts: [[x, y], ...] }], every ring with the same point count and order.
+  // Flat-shaded, which is what welded armour plate looks like. o.cap: 0 none, 1 first, 2 last, 3 both (default).
+  sections(secs, c, o = {}) {
+    const R = secs.map((s) => s.pts.map(([x, y]) => new THREE.Vector3(x, y, s.z))), n = R[0].length, cap = o.cap ?? 3;
+    const mid = (ring) => { const m = new THREE.Vector3(); for (const p of ring) m.add(p); return m.multiplyScalar(1 / ring.length); };
+    for (let s = 0; s < R.length - 1; s++) {
+      const inside = mid(R[s]).add(mid(R[s + 1])).multiplyScalar(0.5);
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, q = [R[s][i], R[s][j], R[s + 1][j], R[s + 1][i]].filter((p, k, arr) => p.distanceToSquared(arr[(k + arr.length - 1) % arr.length]) > 1e-10);
+        if (q.length >= 3) { const cc = typeof o.color === 'function' ? o.color(s, i) : c; if (cc !== null) this.poly(q, cc, inside); }
+      }
+    }
+    if (cap & 1) this.fan(mid(R[0]), R[0], o.capColor ?? c, mid(R[1]));
+    if (cap & 2) this.fan(mid(R[R.length - 1]), R[R.length - 1], o.capColor ?? c, mid(R[R.length - 2]));
+    return this;
+  }
+  // Solid of revolution about the x axis: prof = [[radius, offset], ...] with offset measured outward along `side` (+1 / -1).
+  lathe(prof, x, y, z, side, c, seg = 16) {
+    const g = new THREE.LatheGeometry(prof.map(([r, o]) => new THREE.Vector2(r, o)), seg); g.rotateZ(side > 0 ? -Math.PI / 2 : Math.PI / 2);
+    this.addGeometry(g, this.xf(x, y, z), c); g.dispose(); return this;
+  }
   build(uvScale = 0.25) {
     const g = new THREE.BufferGeometry(), n = this.pos.length / 3, uv = new Float32Array(n * 2);
     for (let i = 0; i < n; i++) {

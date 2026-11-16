@@ -186,7 +186,7 @@ export class Tank {
     this.recoil = Math.max(0, this.recoil - dt * (this.recoil > 0.6 ? 9 : 1.6));
     // ---- tracks + dust
     const vl = this.speed - this.yawRate * g.W * 0.5, vr = this.speed + this.yawRate * g.W * 0.5;
-    M.tracks[0].tex.offset.y += (vl * dt) / 0.32; M.tracks[1].tex.offset.y += (vr * dt) / 0.32;
+    const t0 = M.tracks[0], t1 = M.tracks[1]; t0.tex.offset.y = t0.nrm.offset.y = (t0.tex.offset.y + (vl * dt) / 0.3) % 1; t1.tex.offset.y = t1.nrm.offset.y = (t1.tex.offset.y + (vr * dt) / 0.3) % 1;
     this.sync();
   }
 

@@ -285,21 +285,22 @@ export function buildCity(scene) {
   const std = (p) => new THREE.MeshStandardMaterial(p);
   // asphalt only east/south of the quay lines: build as a box-clipped plane
   const gA = new THREE.PlaneGeometry(1500, 1500); gA.rotateX(-Math.PI / 2); gA.translate(-MAP + 750, 0, -MAP + 750);
-  const at = TX.asphaltTexture(); at.repeat.set(150, 150);
-  add(gA, std({ map: at, roughness: 0.93, metalness: 0 }), { cast: false });
+  const am = TX.asphaltMaps(); for (const t of [am.map, am.normal, am.rough]) t.repeat.set(250, 250);
+  add(gA, std({ map: am.map, normalMap: am.normal, roughnessMap: am.rough, roughness: 1, metalness: 0, envMapIntensity: 0.6 }), { cast: false });
   const wG = new THREE.PlaneGeometry(5000, 5000); wG.rotateX(-Math.PI / 2); wG.translate(0, -3, 0);
-  add(wG, std({ color: 0x35464a, roughness: 0.16, metalness: 0.9, envMapIntensity: 1.1 }), { cast: false });
+  add(wG, std({ color: 0x2c3a3c, roughness: 0.2, metalness: 0.85, envMapIntensity: 1.0, normalMap: am.normal, normalScale: new THREE.Vector2(0.25, 0.25) }), { cast: false });
   for (let i = 0; i < TX.FACADE_COUNT; i++) {
     if (!C.fac[i].pos.length) continue;
     const t = TX.facadeTextures(i);
-    add(C.fac[i].build(), std({ map: t.map, roughnessMap: t.rm, metalnessMap: t.rm, roughness: 1, metalness: 1, emissiveMap: t.em, emissive: 0xffffff, emissiveIntensity: 0.4, envMapIntensity: 1.15 }));
+    add(C.fac[i].build(), std({ map: t.map, roughnessMap: t.rm, metalnessMap: t.rm, roughness: 1, metalness: 1, emissiveMap: t.em, emissive: 0xffffff, emissiveIntensity: 0.35, envMapIntensity: 1.25, normalMap: t.nm, normalScale: new THREE.Vector2(0.9, 0.9) }));
   }
   C.shop.forEach((b, i) => { if (b.pos.length) add(b.build(), std({ map: TX.shopfrontTexture(i), roughness: 0.5, metalness: 0.2 })); });
   const tp = (tone, rep) => { const t = TX.pavingTexture(tone); return t; };
   add(C.conc.build(0.2), std({ vertexColors: true, roughness: 0.86, metalness: 0.04 }));
-  add(C.pave.build(1 / 4.8), std({ map: tp(0), vertexColors: true, roughness: 0.9 }), { cast: false });
-  add(C.plaza.build(1 / 6), std({ map: tp(1), vertexColors: true, roughness: 0.8 }), { cast: false });
-  add(C.wood.build(1 / 5), std({ map: tp(2), vertexColors: true, roughness: 0.85 }), { cast: false });
+  const pv = (tone, rough) => { const t = tp(tone); return std({ map: t.map, normalMap: t.normal, vertexColors: true, roughness: rough, envMapIntensity: 0.5 }); };
+  add(C.pave.build(1 / 4.8), pv(0, 0.88), { cast: false });
+  add(C.plaza.build(1 / 6), pv(1, 0.7), { cast: false });
+  add(C.wood.build(1 / 5), pv(2, 0.85), { cast: false });
   add(C.grass.build(1 / 7), std({ map: TX.grassTexture(), vertexColors: true, roughness: 0.95 }), { cast: false });
   add(C.marks.build(1), std({ vertexColors: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), { cast: false });
   add(C.pearl.build(1), std({ color: 0xa63a66, roughness: 0.2, metalness: 0.8, envMapIntensity: 1.3 }));
@@ -312,7 +313,7 @@ export function buildCity(scene) {
   const plane = new THREE.PlaneGeometry(1, 1);
   for (const p of C.plates) {
     const mat = p.glow ? new THREE.MeshBasicMaterial({ map: p.texture, color: new THREE.Color(p.glow, p.glow, p.glow), side: THREE.DoubleSide }) : std({ map: p.texture, roughness: 0.6, side: THREE.DoubleSide });
-    const m = new THREE.Mesh(plane, mat); m.position.set(p.x, p.y, p.z); m.rotation.y = p.ry; m.scale.set(p.w, p.h, 1); m.updateMatrix(); m.matrixAutoUpdate = false; scene.add(m);
+    const m = new THREE.Mesh(plane, mat); m.position.set(p.x, p.y, p.z); m.rotation.y = p.ry; m.scale.set(p.w, p.h, 1); m.updateMatrix(); m.matrixAutoUpdate = false; m.userData.noAO = true; scene.add(m);
   }
   props.build();
 

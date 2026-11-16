@@ -13,7 +13,7 @@ export class Shells {
   }
   mesh(type) {
     let m = this.pool.pop();
-    if (!m) { m = new THREE.Mesh(this.geo, new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); m.frustumCulled = false; this.scene.add(m); }
+    if (!m) { m = new THREE.Mesh(this.geo, new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); m.frustumCulled = false; m.userData.noAO = true; this.scene.add(m); }
     const c = TRACER[type]; m.material.color.setRGB(c[0], c[1], c[2]); m.visible = true; return m;
   }
   spawn(owner, pos, dir, shell) {
